@@ -221,3 +221,6 @@ orchestration §5(W1 통합 DoD) 중 본 이슈 관련:
 - **타임존/마감시각 정밀 계산** — `date` 단위만. 시·분 EOD 타이밍은 스케줄러(collect, W2) 책임.
 - **US/FX 어댑터, regime US(CAPE)** — orchestration §6 명시 Out of scope.
 - **다종목·KOSDAQ 등 시장 확장** — calendar는 KR/US 2개 거래소만. 서브마켓 구분 불필요(거래일은 거래소 단위).
+
+---
+> 📌 본 가이드의 "미해결 질문"은 **전건 해소됨** → `docs/BAL-1-m1a-decisions.md` (유보 0건). 시그니처 정본 = orchestration §2 v2.

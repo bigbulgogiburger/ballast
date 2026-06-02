@@ -290,3 +290,6 @@ def test_regime_kr_only(monkeypatch):
 - **`sources/etf.py`(ETF 구성)** — W2.
 - **`FxRate` DTO·`SecurityCard`·`BriefingDoc` 등 LLM/렌더 DTO** — W2+/W3+ (BAL-1-m1a §2.4).
 - **KOSDAQ(.KQ) 서브마켓 해소** — W2(W1=005930 KOSPI만).
+
+---
+> 📌 본 가이드의 "미해결 질문"은 **전건 해소됨** → `docs/BAL-1-m1a-decisions.md` (유보 0건). 시그니처 정본 = orchestration §2 v2.

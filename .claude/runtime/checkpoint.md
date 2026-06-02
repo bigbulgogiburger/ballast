@@ -10,6 +10,7 @@
 - Phase 1 start: 에픽 + BAL-8~12 In Progress, 브랜치 생성
 - Phase 3 plan: orchestration 문서 + seam 계약 **v2(canonical 정합)**, dev-guide 5종(docs/BAL-{8..12}-dev-guide.md), Sprint Contract(BAL-1), state
 - 정합성 정정: seam v1 드리프트(to_source/calendar/headlines/validate/regime/9테이블) → canonical로 수정. W-2a 공통가드 선행.
+- 미해결 질문 **전건 해소**: `docs/BAL-1-m1a-decisions.md` (유보 0건, needs_user 0건). 교차충돌 4건 단일화.
 
 ## 다음
 - **Phase 4 사용자 승인 대기** (슬라이스 계획) → Phase 5 구현은 Wave W-1(BAL-8/9/10)부터

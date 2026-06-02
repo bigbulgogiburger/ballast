@@ -235,3 +235,6 @@ def test_classify_cash_is_none():
 - **다종목 입력·실데이터 적재**(`KrSource.ohlcv` 등 = BAL-11/W2).
 - **`category`의 DB 영속화 SQL**(`POST /holdings` upsert = `04 §1.4`/`main.py`, W3+). 본 이슈는 판정 함수만 제공.
 - `models.py`의 LLM/Card DTO·FxRate(W2+), metrics·collect·frontend(W2~W5).
+
+---
+> 📌 본 가이드의 "미해결 질문"은 **전건 해소됨** → `docs/BAL-1-m1a-decisions.md` (유보 0건). 시그니처 정본 = orchestration §2 v2.

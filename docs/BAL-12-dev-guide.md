@@ -369,3 +369,6 @@ orchestration §6 + 본 이슈 경계:
 - `OHLCV`/`Funda` 첫 필드 `canonical_ticker`: 04 §4.2(L242,253)·§15.2·orchestration §2.4 일치(v1 `OHLCV.ct` 오류 정정됨). ✅
 - to_source 표(`005930.KS`/`voo.us`/`BRK-B`/`brk-b.us`): 04 §5.1(L362-368)·orchestration §2.2 일치. ✅
 - §15(TECH-DESIGN)와 모순 없음: §15.2 DTO·§15.4 status·§15.5 settings 모두 04/05와 정합. ✅
+
+---
+> 📌 본 가이드의 "미해결 질문"은 **전건 해소됨** → `docs/BAL-1-m1a-decisions.md` (유보 0건). 시그니처 정본 = orchestration §2 v2.

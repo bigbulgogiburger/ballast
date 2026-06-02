@@ -264,3 +264,6 @@ def conn():
 2. **`upsert_*(conn, row)`의 `row` 타입**: orchestration §2.1은 `row` 타입을 명시하지 않음. 05 §4.1은 named bind(`:ct`)를 사용하므로 본 가이드는 **dict(또는 dict-like 매핑)** 로 가정했다. 그러나 BAL-11 반환형은 `OHLCV`/`Funda` frozen dataclass(orchestration §2.4)다 → upsert가 dataclass를 받을지(`asdict()` 변환을 db.py가 할지 caller가 할지), 아니면 dict를 받을지 확정 필요. (E2E caller가 누가 변환할지의 책임 경계.)
 3. **테이블 개수 표기 불일치**: orchestration §3 W-1 게이트는 "init_schema 후 **7테이블**"이라 적었으나 05 §1.1~1.9 DDL은 **9테이블**(holdings·settings·price_snapshot·fundamentals_snapshot·fx_snapshot·news_snapshot·market_regime·collect_run·briefing)이다. SSoT 우선순위(05 > orchestration 요약)에 따라 9를 채택했으나, §3 문구가 오기인지 확인 필요.
 4. **upsert 트랜잭션 경계**: 단계 E는 각 upsert 끝에 `conn.commit()`을 가정했다. 그러나 배치(W2 collect.py)에서 다건을 한 트랜잭션으로 묶고 싶다면 헬퍼 내부 commit이 방해가 된다. §2.1/05는 commit 위치를 명시하지 않음 → 헬퍼가 commit할지(자기완결) caller가 할지 확정 필요.
+
+---
+> 📌 본 가이드의 "미해결 질문"은 **전건 해소됨** → `docs/BAL-1-m1a-decisions.md` (유보 0건). 시그니처 정본 = orchestration §2 v2.

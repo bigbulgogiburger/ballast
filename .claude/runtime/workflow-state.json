@@ -33,12 +33,15 @@
       "BAL-10": "docs/BAL-10-dev-guide.md", "BAL-11": "docs/BAL-11-dev-guide.md",
       "BAL-12": "docs/BAL-12-dev-guide.md"
     },
-    "sprint_contract": ".claude/runtime/sprint-contract/BAL-1.md"
+    "sprint_contract": ".claude/runtime/sprint-contract/BAL-1.md",
+    "decisions": "docs/BAL-1-m1a-decisions.md"
   },
+  "open_questions": "resolved (유보 0건, needs_user 0건) — docs/BAL-1-m1a-decisions.md",
   "history": [
     { "ts": "2026-06-02", "event": "Phase1 start: epic BAL-1 + BAL-8~12 → In Progress, branch feat/bal-1-m1a-spike off 7a0a815" },
     { "ts": "2026-06-02", "event": "Phase3 plan: orchestration doc + seam contract written; dev-guide fan-out (workflow wf_9bfda1f9-6d1)" },
     { "ts": "2026-06-02", "event": "dev-guide 5종 작성 완료(docs/BAL-{8..12}-dev-guide.md). verify가 seam v1 드리프트 적발 → orchestration §2를 canonical(04/§15)로 v2 정정. 9테이블 정정. W-2a 공통가드(validate/retry) 선행 의존 반영. regime KR→regime.py." },
-    { "ts": "2026-06-02", "event": "BAL-9/10/11/12 dev-guide canonical 시그니처로 재생성(wf_83428d92-2a0, 전건 verify OK). models.py가 BAL-8/9/11 공유파일 → W-1a 선행 단독커밋 prestep 추가. BAL-1 에픽에 계획 댓글." }
+    { "ts": "2026-06-02", "event": "BAL-9/10/11/12 dev-guide canonical 시그니처로 재생성(wf_83428d92-2a0, 전건 verify OK). models.py가 BAL-8/9/11 공유파일 → W-1a 선행 단독커밋 prestep 추가. BAL-1 에픽에 계획 댓글." },
+    { "ts": "2026-06-02", "event": "미해결 질문 전건 해소(wf_f1b7ac17-475): docs/BAL-1-m1a-decisions.md(유보 0건, needs_user 0건). 교차충돌 4건 단일화(connect 인자형/upsert 전체명 bind/KOSDAQ→W2/OHLCV week52·sma200 float|None). orchestration §2 반영, dev-guide 5종에 해소 포인터." }
   ]
 }

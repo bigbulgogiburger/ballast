@@ -3,6 +3,7 @@
 > 생성: /harness-workflow (ultrathink). SSoT 계약 = `TECH-DESIGN.md §15` + `docs/05-database.md` + `docs/04-backend.md`.
 > 목적: BAL-8~12를 **하나의 결합된 수직 슬라이스**로 안전하게 구현하기 위한 의존 그래프 · 모듈 seam 계약 · 실행 파동(wave) · per-issue 범위/DoD를 고정한다.
 > 브랜치: `feat/bal-1-m1a-spike` (베이스 `7a0a815`). 상태: 에픽 BAL-1 + BAL-8~12 = 진행 중.
+> 미해결 결정: **전건 해소됨 → `docs/BAL-1-m1a-decisions.md`** (유보 0건, needs_user 0건).
 
 ---
 
@@ -60,7 +61,7 @@ def upsert_fx(conn, row: FxRate) -> None      # fx 적재 자체는 W2지만 헬
 ```
 > 🔎 **발견①(범위 보강)**: BAL-12 DoD가 `db.upsert_*` 적재를 요구 → 최소 upsert 3종을 db.py(BAL-8) 범위에 포함.
 > 🔎 **발견②(seed 함정, dev-guide 적발)**: `config.SETTINGS_DEFAULTS`는 dict가 아니라 `@dataclass(frozen=True) Settings` 인스턴스 → seed 루프는 `dataclasses.asdict(SETTINGS_DEFAULTS).items()`로 순회(직접 `.items()`/`[key]` 금지). value는 `str()` 변환(컬럼 TEXT). `ON CONFLICT DO NOTHING`(사용자값 보존).
-> 🔎 **결정(upsert 인자형)**: upsert_*는 **frozen dataclass(OHLCV/Funda/FxRate)** 를 받아 내부에서 `asdict`로 named-bind. (caller가 dict 변환 안 함.)
+> 🔎 **결정(upsert 인자형)**: upsert_*는 **frozen dataclass(OHLCV/Funda/FxRate)** 를 받아 내부에서 `asdict`로 named-bind. (caller가 dict 변환 안 함.) named param은 **컬럼 전체명(`:canonical_ticker` 등)** — 05 §4.1의 약어(`:ct/:td`)는 예시일 뿐, asdict 키와 1:1 정합(decisions #2). `connect(db_path=...)` 인자형 확정(decisions #1).
 
 ### 2.2 `app/tickers.py` (BAL-9) — canonical 04 §5.1/§5.3
 ```python
@@ -71,7 +72,7 @@ def classify_category(h: HoldingInput) -> Literal["core","satellite"] | None
     # 1)h.category 우선 2)stock→satellite 3)etf→whitelist면 core 아니면 None 4)그외 None
 ```
 > 🔎 **정정**: v1의 `to_source(canonical, market=None)`·`classify_category(ticker, instrument)`는 오류. canonical은 `source` 인자 포함 + `classify_category(HoldingInput)`.
-> 🔎 **결정(KOSPI/KOSDAQ)**: `market='KR'`만으로 .KS/.KQ 구분 불가. **005930=KOSPI(.KS)로 진행**, KOSDAQ(.KQ) 서브마켓 해소는 W2(다종목)로 유보(known limitation).
+> 🔎 **결정(KOSPI/KOSDAQ, decisions #3)**: W1=**무조건 .KS**(005930=KOSPI), KOSDAQ frozenset 분기 코드는 **W2에서 추가**(유보 아님 — wave 분할 확정). 거래일 판정은 KOSPI/KOSDAQ 동일 XKRX라 영향 없음.
 
 ### 2.3 `app/calendar.py` (BAL-10) — canonical 04 §6.1 (인자순서 `(market, d)`)
 ```python
@@ -86,7 +87,7 @@ def expected_trade_date(market: Literal["KR","US"], today: date) -> date   # KR=
 > §15.2 DTO 전량은 W3이나 W1 코드가 참조하는 것만 선정의: **HoldingInput(mutable) + OHLCV/Funda/Headline/RegimeRow(frozen)**. FxRate는 W2(fx 어댑터)와 함께. SecurityCard/BriefingDoc 등 LLM·렌더 DTO는 W3+.
 ```python
 @dataclass class HoldingInput: instrument; name; canonical_ticker=None; market=None; ...; category=None  # 04 §4.1 (mutable)
-@dataclass(frozen=True) class OHLCV:  canonical_ticker; trade_date; close_raw; close_adj; ccy; week52_high; week52_low; sma200
+@dataclass(frozen=True) class OHLCV:  canonical_ticker; trade_date; close_raw: float; close_adj: float; ccy; week52_high: float|None; week52_low: float|None; sma200: float|None  # 윈도우<200 시 None (decisions #4)
 @dataclass(frozen=True) class Funda:  canonical_ticker; trade_date; per; pbr; div_yield; per_pctile_5y; pbr_pctile_5y; report_date
 @dataclass(frozen=True) class Headline: title; url; source
 @dataclass(frozen=True) class RegimeRow: as_of; kospi_pbr; us_cape   # upsert 매핑 as_of→trade_date, us_cape→shiller_cape
