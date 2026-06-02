@@ -1,179 +1,223 @@
-# BAL-10 dev-guide — `app/calendar.py` (XKRX/XNYS 거래일 로직)
+# BAL-10 개발 가이드 — `app/calendar.py` (XKRX/XNYS 거래일 로직)
 
-> SSoT 우선순위: **TECH-DESIGN.md §15 (Contract SoT)** > `docs/05-database.md` / `docs/04-backend.md`.
-> 시그니처 정본: **`docs/BAL-1-m1a-orchestration.md` §2.3 seam 계약** (단, §15는 calendar를 정의하지 않으므로 §2.3 ↔ 04-backend §6.1 사이에 **파라미터 순서/타입 드리프트**가 존재 — `## 미해결 질문` Q1·Q2 참조. 본 가이드는 §2.3을 정본으로 채택하되 그 충돌을 명시한다).
-> 범위: **W1 (BAL-1 수직 슬라이스, Wave-1)** 만. 어댑터·collect·metrics는 Out of scope.
+> 정본 순위: `TECH-DESIGN.md §15` > `docs/04-backend.md §6.1` > `docs/05-database.md`. seam 정본 = `docs/BAL-1-m1a-orchestration.md §2.3 (v2)`.
+> 아래 **확정 시그니처는 canonical 검증을 마친 정본**이다. 그대로 사용한다 — 인자순서/타입 변형 금지.
 
----
+## 1. 목표 & 배경 (W1 슬라이스 내 역할)
 
-## 1. 목표 & 배경
+`app/calendar.py`는 "오늘이 거래일인가 / 직전 거래일은 언제인가 / collect 기준일은 며칠인가"를 판정하는 순수 로직 모듈이다. `pandas_market_calendars`(이하 `mcal`)의 공식 거래소 캘린더(KR=`XKRX`, US=`XNYS`)를 단일 진실원으로 삼는다.
 
-### 이슈 요약
-`app/calendar.py`는 KR(XKRX)/US(XNYS) 시장의 **거래일 판정·직전 거래일 계산·수집 기준일(expected_trade_date) 산출**을 담당하는 순수 계산 모듈이다. 현재 W0 스텁(1줄 docstring)만 존재한다. `pandas_market_calendars`의 `XKRX`(한국거래소)·`XNYS`(NYSE) 캘린더를 래핑해 3개 함수로 자체 분해한다.
+W1(BAL-1/M1a) 수직 슬라이스에서의 위치:
 
-- `is_trading_day` — 특정 날짜가 해당 시장 거래일인지 판정
-- `prev_trading_day` — 특정 날짜 **이전**의 가장 가까운 거래일
-- `expected_trade_date` — collect가 "오늘 기준 기대하는 데이터 거래일". **핵심은 US 규칙**: 무료 소스 EOD publish 지연 때문에 08:00 KST 수집 시점에 받을 수 있는 미국 데이터는 **직전 거래일** 마감분이다(KR은 오늘이 거래일이면 오늘).
+- **의존: 없음** — `db.py`(BAL-8), `tickers.py`(BAL-9)와 함께 **W-1의 3개 격리 foundation 중 하나**다. 파일 비중복, 충돌 0이므로 3-way 진짜 병렬로 구현된다 (orchestration §1·§3).
+- **소비자: W-2의 `sources/kr.py`(BAL-11)** 가 import 한다. seam 계약(orchestration §2.5)상 KR 어댑터 내부에서 `calendar.expected_trade_date('KR', today)`를 호출해 "어떤 거래일 기준으로 데이터를 fetch할지"를 결정한다.
+- **하류(W2+, 본 이슈 범위 밖)**: `collect.py`가 휴장일이면 `status='OK_HOLIDAY'`로 정상 skip(04 §6.2, TECH-DESIGN §9 ⑦), `build_freshness_badge`가 "기대 거래일 vs 실제 수집일" 대조에 사용(04 §6.3). **이 소비자들은 W1에서 구현하지 않는다** — 호환 시그니처만 보장하면 된다.
 
-### W1 슬라이스(BAL-1) 내 역할/의존
-`BAL-1-m1a-orchestration.md` §1 DAG 기준:
-
-- BAL-10은 **격리 foundation 3종(BAL-8 db / BAL-9 tickers / BAL-10 calendar) 중 하나**. 파일 비중복, 충돌 0 → **Wave-1에서 BAL-8·9와 3-way 진짜 병렬** 가능.
-- **의존: 없음**. `pandas_market_calendars` 외부 라이브러리만 의존.
-- **소비자**: BAL-11 `app/sources/kr.py`가 `calendar.expected_trade_date`를 내부에서 사용(§2.5 주석), BAL-12 통합 E2E가 005930 expected_trade_date 정확성을 게이트로 검증(§3 W-1 게이트).
-- Wave-1 게이트(§3): **"calendar: 005930 expected_trade_date 정확"** — KR 종목 기준 기대 거래일이 휴장·주말을 정확히 반영해야 W-2(BAL-11) 진입.
-
----
+근거: TECH-DESIGN §9 ③("조회는 최신 거래일 기준 … KR/US 직전 거래일 계산, 기대일 vs 수집일 대조") + ⑦("휴장일이면 collect 정상 skip"). `expected_trade_date`의 KR=오늘 / US=직전거래일 비대칭은 EOD(전일 마감분) 수집 타이밍 때문이다 — 08:00 KST 수집 시점에 한국 시장은 당일분이 곧 생기지만, 미국은 전일 마감분만 확정돼 있다(04 §6.1 주석, TECH-DESIGN §9 ①④).
 
 ## 2. 영향 파일
 
-| 파일 | 작업 | 비고 |
+| 파일 | 변경 | 비고 |
 |------|------|------|
-| `app/calendar.py` | **수정(스텁→구현)** | 함수 3종 + 모듈 캘린더 핸들 2개(`XKRX`/`XNYS`) |
-| `tests/test_calendar.py` | **신규** | 순수계산 단위 테스트(필수) + mcal 경계 케이스 |
-| `requirements.txt` | 변경 없음 | `pandas-market-calendars` 이미 존재(13번째 줄). **단, 현재 venv 미설치 — `pip install -r requirements.txt` 선행 필요**(`## 엣지 & 리스크` R5) |
+| `app/calendar.py` | **구현** (현재 W0 스텁: docstring 1줄) | 본 이슈 산출물 |
+| `tests/test_calendar.py` | **신규 생성** | `@pytest.mark.unit`, mcal 모킹 |
+| `requirements.txt` | 변경 없음 | `pandas-market-calendars` 이미 설치 확인됨 |
 
-> 표준 라이브러리 `datetime`(`date`, `datetime`)만 추가 import. `app/models.py`·`app/db.py` 등 타 모듈 **수정 금지**(격리 foundation 원칙).
+> 다른 W-1 형제 파일(`db.py`/`tickers.py`)은 **건드리지 않는다**. seam 계약 위반 방지.
 
----
+## 3. 구현 단계 (자체 분해 단위 + 검증 포인트)
 
-## 3. 구현 단계 (자체 분해 3단계)
+```
+1. 모듈 헤더 + mcal 캘린더 인스턴스 모듈 전역 생성
+   → verify: python3 -m py_compile app/calendar.py 통과
+2. _cal(market) 내부 디스패처 (KR→_KR, US→_XNYS)
+   → verify: _cal('KR') is _KR, _cal('US') is _US
+3. is_trading_day(market, d) 구현
+   → verify: 평일 거래일 True / 토·일 False / 한국 신정(2024-01-01) False
+4. prev_trading_day(market, d) 구현
+   → verify: 월요일 d → 직전 금요일 / 화요일(전날 휴장 아님) → 전날
+5. expected_trade_date(market, today) 구현
+   → verify: KR=거래일이면 today 그대로 / US=항상 prev_trading_day(today 포함 안 함)
+6. tests/test_calendar.py 작성 (mcal 모킹) → verify: pytest -q green
+```
 
-전제: 모듈 상단에서 캘린더 핸들을 **모듈 로드 시 1회 생성**해 함수 호출마다 재생성하지 않는다(04-backend §6.1 패턴).
+각 단계는 독립 함수 1개 단위라 순차로 누적 검증 가능하다. 검증은 §6 테스트로 자동화한다.
+
+## 4. 인터페이스 (확정 시그니처 구체화)
+
+확정 시그니처를 **그대로** 사용한다 (canonical: 04 §6.1, orchestration §2.3 v2):
 
 ```python
+"""시장 거래일·휴장일 캘린더 헬퍼.
+
+pandas_market_calendars의 공식 거래소 캘린더를 단일 진실원으로 사용한다.
+mcal 기본 휴장표를 신뢰한다(임시공휴일 보정은 PoC 범위 밖).
+"""
+
+from datetime import date, timedelta
+from typing import Literal
+
+import pandas as pd
 import pandas_market_calendars as mcal
+
 _KR = mcal.get_calendar("XKRX")   # 한국거래소
 _US = mcal.get_calendar("XNYS")   # NYSE
+
+
+def _cal(market: Literal["KR", "US"]) -> mcal.MarketCalendar:
+    """시장 코드를 mcal 캘린더 인스턴스로 매핑."""
+    return _KR if market == "KR" else _US
+
+
+def is_trading_day(market: Literal["KR", "US"], d: date) -> bool:
+    """d가 해당 시장의 거래일이면 True, 주말·휴장일이면 False."""
+    sessions = _cal(market).valid_days(start_date=d, end_date=d)
+    return len(sessions) > 0
+
+
+def prev_trading_day(market: Literal["KR", "US"], d: date) -> date:
+    """d **직전**의 거래일을 반환(d 자신은 포함하지 않음)."""
+    start = d - timedelta(days=14)               # 연휴 여유 윈도우
+    sessions = _cal(market).valid_days(start_date=start, end_date=d - timedelta(days=1))
+    return sessions[-1].date()
+
+
+def expected_trade_date(market: Literal["KR", "US"], today: date) -> date:
+    """collect 기준 거래일.
+
+    KR = 오늘(거래일이면 그대로, 휴장일이면 직전 거래일).
+    US = 직전 거래일(전일 마감분 수집, EOD 지연 흡수).
+    """
+    if market == "KR":
+        return today if is_trading_day("KR", today) else prev_trading_day("KR", today)
+    return prev_trading_day("US", today)
 ```
 
-market 코드 → 캘린더 매핑은 작은 dict 또는 `if/elif`로 분기하고, **알 수 없는 market은 `ValueError`로 즉시 실패**(조용한 잘못된 기본값 금지).
-
-### 단계 1 — `is_trading_day`
-- **로직**: `_cal.valid_days(start_date=d, end_date=d)`(또는 `schedule(d, d)`)의 결과 행수가 1이면 거래일, 0이면 휴장/주말. mcal `valid_days`는 tz-aware `DatetimeIndex`를 반환하므로 `len(...) > 0` 으로 판정.
-- **검증 포인트**:
-  - 평일 정상 거래일 → `True`
-  - 토/일 → `False`
-  - 알려진 휴장일(예: KR 신정 1/1, US Independence Day 7/4) → `False`
-  - `market` ∈ {'KR','US'} 외 값 → `ValueError`
-
-### 단계 2 — `prev_trading_day`
-- **로직**: `d` **직전(미포함)**의 가장 가까운 거래일. `valid_days(start=d-lookback, end=d - 1일)` 윈도우의 마지막 원소를 취한다. 연휴를 넘기기 위해 lookback 윈도우는 충분히 넓게(예: 14일) 잡되, 빈 결과 방어(`## 엣지` R2).
-- **경계 정의 고정 필요**: "`d` 자신이 거래일이어도 결과는 `d` 미만"인지(strictly previous), 아니면 "`d`가 거래일이면 `d` 반환"인지는 **이름상 strictly-previous로 채택**(`prev`). 04-backend §10.671 "직전 거래일 close_raw" 용례와 정합. 확정은 Q3.
-- **반환형**: `date`(tz 제거한 순수 날짜).
-- **검증 포인트**:
-  - 화요일 입력 → 직전 월요일
-  - 월요일 입력 → 직전 금요일(주말 스킵)
-  - 연휴 다음 영업일 입력 → 연휴 직전 거래일(다중일 스킵)
-
-### 단계 3 — `expected_trade_date` (핵심)
-- **로직** (04-backend §6.1 주석 + TECH-DESIGN v3.2 ⑦ 기준):
-  - **KR**: 인자 날짜가 거래일이면 그 날짜, 아니면 직전 거래일.
-    → `d if is_trading_day('KR', d) else prev_trading_day('KR', d)`
-  - **US**: **무조건 직전 거래일**. 08:00 KST 수집 시점엔 미국 장이 아직 안 열렸거나(당일 데이터 없음) EOD publish 지연으로 전일 마감분만 확보 가능.
-    → `prev_trading_day('US', d_or_today)` (인자 날짜가 거래일이어도 직전 거래일을 기대)
-- **반환형**: `date`.
-- **검증 포인트** (Wave-1 게이트):
-  - KR 평일(거래일) → 같은 날
-  - KR 토요일 → 직전 금요일
-  - KR 휴장일(연휴) → 연휴 직전 거래일
-  - US 평일 → 직전 거래일(같은 날 아님!) — US 규칙의 핵심 회귀 방지
-  - US 월요일 → 직전 금요일
-
-> ⚠️ **US "직전거래일" 규칙이 본 이슈의 핵심**. KR과 US의 분기가 정확히 나뉘는지가 단위 테스트의 1순위 단언.
-
----
-
-## 4. 인터페이스 (§2.3 seam 정본)
-
-`BAL-1-m1a-orchestration.md` §2.3을 **정본**으로 가져온다. §15는 calendar를 정의하지 않으므로 §2.3이 시그니처 SoT다.
-
-```python
-def is_trading_day(d: date, market: str) -> bool:
-    """d가 market 거래일이면 True. market ∈ {'KR','US'} 외엔 ValueError."""
-
-def prev_trading_day(d: date, market: str) -> date:
-    """d 직전(미포함)의 가장 가까운 거래일. market ∈ {'KR','US'}."""
-
-def expected_trade_date(market: str, now: datetime) -> date:
-    """collect 기준일. KR=now가 거래일이면 그 날(아니면 직전), US=직전 거래일(EOD 지연)."""
-```
+### 파라미터 / 반환형 / 예외
 
 | 함수 | 파라미터 | 반환형 | 예외 |
 |------|----------|--------|------|
-| `is_trading_day` | `d: date`, `market: str` | `bool` | `market` 미지원 시 `ValueError` |
-| `prev_trading_day` | `d: date`, `market: str` | `date` | `market` 미지원 시 `ValueError`; lookback 윈도우 내 거래일 부재 시 `ValueError`(R2) |
-| `expected_trade_date` | `market: str`, `now: datetime` | `date` | `market` 미지원 시 `ValueError` |
+| `is_trading_day` | `market: Literal["KR","US"]`, `d: date` | `bool` | 없음(빈 세션=False) |
+| `prev_trading_day` | `market: Literal["KR","US"]`, `d: date` | `date` | 윈도우 내 거래일 0개면 `IndexError`(아래 §5 참조) |
+| `expected_trade_date` | `market: Literal["KR","US"]`, `today: date` | `date` | `prev_trading_day` 위임분만 |
 
-> 🚨 **드리프트 경고 — 본문에 임의 가정 주입 금지, 미해결 질문으로 이관**:
-> - `is_trading_day`/`prev_trading_day`: §2.3은 `(d, market)` 순서이나 **04-backend §6.1 + 실제 모든 호출부**(04-backend L539 `calendar.is_trading_day(market, today)`)는 `(market, d)` 순서다 → **Q1**.
-> - `expected_trade_date`: §2.3은 `(market, now: datetime)`, 04-backend §6.1·호출부(L545·L724 `calendar.expected_trade_date(market, today)`)는 `(market, today: date)`다. 2번째 인자 **타입(datetime vs date)** 도 불일치 → **Q2**.
-> - 위 충돌을 본 가이드는 §2.3 채택으로 봉합했으나, **그대로 구현하면 BAL-11/collect 호출부가 깨진다**. 구현 착수 전 Q1·Q2를 반드시 해소해 §2.3 또는 §6.1 중 하나로 표를 갱신(§2 머리말의 "충돌 시 §15/05 우선, 그 결과를 본 표에 반영" 절차)할 것.
-
----
+**계약 고정 사항** (변형 금지):
+- 인자순서는 모두 **`(market, 날짜)`** — 첫 인자가 market, 둘째가 `date`.
+- 둘째 인자는 **`date`이지 `datetime`이 아니다**. 시간/타임존을 받지 않는다. (호출부 `kr.py`도 `date`를 넘긴다.)
+- `prev_trading_day`는 **d 자신을 포함하지 않는다**(strict prev). `expected_trade_date('KR', …)`만 today 포함 가능.
+- mcal `valid_days()`는 tz-aware `DatetimeIndex`(UTC)를 돌려주므로, 반환 직전 `.date()`로 **순수 `date`로 좁힌다** — tz 오염 방지.
 
 ## 5. 엣지 & 리스크
 
-| ID | 케이스 | 대응 |
-|----|--------|------|
-| R1 | **빈 DF / 빈 valid_days 인덱스** (mcal가 0행 반환) | `is_trading_day`는 `len>0`로 안전. `prev_trading_day`는 빈 결과 시 lookback 확대 또는 `ValueError`로 명시 실패(조용히 잘못된 날짜 반환 금지) |
-| R2 | **lookback 윈도우 내 거래일 부재** (장기 연휴 + 너무 좁은 윈도우) | lookback 충분히(≥14일) 확보. 그래도 비면 `ValueError`. mcal 데이터가 미래/과거 범위를 벗어나는 극단 입력 방어 |
-| R3 | **휴장일 판정 정확성** (US Good Friday·KR 임시공휴일 등 데이터 소스 의존) | mcal 버전에 정의된 휴장만 반영됨 → 신규 임시공휴일은 라이브러리 갱신 전까지 미반영 가능. **W1 PoC 범위에선 mcal 기본값 신뢰**, 임시공휴일 보정은 Out of scope |
-| R4 | **타임존 경계** (mcal valid_days는 tz-aware index) | 입력 `date`/`datetime`을 naive로 다루고, 비교는 **날짜(date) 단위**로 정규화. `expected_trade_date(now: datetime)`의 시각(HH:MM)은 **무시**하고 date만 사용(KST 08:00 cron 전제, 시각 의존 로직 넣지 말 것) |
-| R5 | **`pandas_market_calendars` venv 미설치** (현재 환경) | 구현/테스트 전 `pip install -r requirements.txt`. import 실패 시 단계 1부터 막힘 |
-| R6 | **NULL percentile / 조정가 stale / 백필** | **본 모듈 범위 밖.** percentile은 BAL-11 fundamentals(per_pctile_5y), 조정가 stale·백필은 BAL-11 ohlcv/collect 책임. calendar는 날짜만 산출하므로 이들 NULL/stale을 생성하지도 소비하지도 않음 → 대응 불필요(혼입 금지) |
+- **`valid_days`의 경계 반열림**: `start_date`/`end_date`는 양끝 포함(inclusive)이다. `prev_trading_day`에서 d 자신 제외를 위해 `end_date=d - 1day`로 명시했다. d가 거래일이어도 결과에 포함되지 않는다(strict prev 계약 충족).
+- **연휴 윈도우 길이**: `prev_trading_day`의 lookback을 14일로 잡았다. 한국 설/추석 연휴(최대 ~5거래일 + 주말)와 미국 연말 휴장을 모두 포괄한다. 정상 입력에서 14일 내 거래일이 0개가 되는 일은 없다.
+- **타임존**: `valid_days`는 UTC tz-aware index를 반환. `.date()`로 좁히면 KST/EST 변환 없이 "거래소 달력상의 날짜"가 그대로 나온다. PoC는 거래일 **날짜**만 필요하므로 충분하다. `expected_trade_date`에 넘기는 `today`도 호출부(`collect.py`)가 KST `date.today()`로 산출한다는 전제(W2 책임).
+- **임시공휴일/대체휴일**: mcal `XKRX`/`XNYS` 기본 휴장표를 신뢰한다. 정부 지정 임시공휴일(예: 선거일)이 mcal에 없으면 거래일로 오판할 수 있으나, **보정은 PoC 범위 밖**(orchestration §2.3, 04 §6.1 주석). known limitation으로 남긴다.
+- **`mcal.get_calendar` 임포트 시 UserWarning**: `XKRX` 로드 시 `break_start/break_end discontinued` 경고가 뜬다(확인됨). 기능 영향 없음. 테스트에서 `-W ignore` 불필요 — 모킹으로 우회한다.
+- **모듈 전역 캘린더 인스턴스**: `_KR`/`_US`를 import 시점에 1회 생성한다. mcal 객체 생성 비용을 호출마다 치르지 않기 위함이며, 04 §6.1 정본 코드 형태와 동일하다.
 
-> 본 가이드의 "빈 DF/백필/휴장/NULL percentile/조정가 stale"은 W1 슬라이스 전체의 리스크 카탈로그에서 가져온 것으로, **calendar 모듈이 실제 책임지는 것은 R1~R4(빈 결과·휴장)** 뿐임을 명확히 한다. 나머지(R6)는 소비자 이슈 책임으로 경계 표시.
+## 6. 테스트 계획 (pytest, 어댑터=모킹)
 
----
+`tests/test_calendar.py` 신규 작성. 기존 컨벤션(`@pytest.mark.unit`, `tests/test_smoke.py` 스타일)을 따른다.
 
-## 6. 테스트 계획
+**모킹 전략**: 외부 네트워크는 없지만 mcal은 외부 휴장표(데이터)에 의존하므로 결정성 확보를 위해 **`_cal`이 돌려주는 캘린더의 `valid_days`를 모킹**한다. 모킹 대상은 `app.calendar._KR` / `_US`의 `valid_days` 메서드(또는 `monkeypatch`로 `_cal` 자체를 페이크 캘린더로 치환).
 
-파일: **`tests/test_calendar.py`** (신규). 전부 **순수계산 단위 테스트**(외부 네트워크 없음 — mcal는 로컬 휴장 데이터셋이므로 모킹 불필요, 그러나 mcal import 실패 시를 위해 마커 `@pytest.mark.unit`). 고정 날짜(하드코딩된 과거 거래일/휴장일)로 결정론적 단언.
+```python
+import datetime as dt
+import pandas as pd
+import pytest
 
-| 테스트명 | 검증 |
-|----------|------|
-| `test_is_trading_day_weekday_true` | KR/US 평일 정상 거래일 → True |
-| `test_is_trading_day_weekend_false` | 토/일 → False (KR·US 각각) |
-| `test_is_trading_day_known_holiday_false` | KR 신정(2025-01-01)·US 7/4 등 알려진 휴장 → False |
-| `test_is_trading_day_invalid_market_raises` | `market='JP'` 등 → `ValueError` |
-| `test_prev_trading_day_skips_weekend` | 월요일 입력 → 직전 금요일 |
-| `test_prev_trading_day_skips_holiday_block` | 연휴 다음 영업일 입력 → 연휴 직전 거래일(다중일 스킵) |
-| `test_prev_trading_day_is_strictly_before` | 거래일 입력 시 결과 < 입력(strictly previous, Q3 확정 후) |
-| `test_expected_trade_date_kr_tradingday_returns_same` | KR 평일 → 같은 날 |
-| `test_expected_trade_date_kr_holiday_returns_prev` | KR 휴장/주말 → 직전 거래일 |
-| `test_expected_trade_date_us_returns_prev_even_on_tradingday` | **US 평일 → 직전 거래일(같은 날 아님)** — 핵심 회귀 |
-| `test_expected_trade_date_us_monday_returns_friday` | US 월요일 → 직전 금요일 |
-| `test_expected_trade_date_005930_kr_smoke` | Wave-1 게이트: 005930(KR) 기대 거래일이 주말/휴장 정확 반영 |
+import app.calendar as cal
 
-> 어댑터(BAL-11) 같은 외부 네트워크 의존이 아니므로 모킹/계약 테스트 불필요. mcal는 패키징된 휴장 캘린더라 결정론적. **테스트 날짜는 mcal에 확실히 정의된 과거 연도(예: 2025)** 를 사용해 라이브러리 갱신에 흔들리지 않게 한다.
 
-실행: `pytest -q tests/test_calendar.py` 및 `python3 -m py_compile app/calendar.py`.
+def _fake_valid_days(trading_dates: set[dt.date]):
+    def _vd(start_date, end_date):
+        days = pd.date_range(start=start_date, end=end_date, freq="D")
+        keep = [ts for ts in days if ts.date() in trading_dates]
+        return pd.DatetimeIndex(keep, tz="UTC")
+    return _vd
 
----
 
-## 7. DoD (체크리스트)
+@pytest.mark.unit
+def test_is_trading_day_weekday(monkeypatch):
+    monkeypatch.setattr(cal._KR, "valid_days",
+                        _fake_valid_days({dt.date(2024, 1, 2)}))
+    assert cal.is_trading_day("KR", dt.date(2024, 1, 2)) is True
 
-로드맵 08 §Week1 + `BAL-1-m1a-orchestration.md` §3·§5에서 해당 항목 인용:
 
-- [ ] **(§3 W-1 게이트 인용)** "calendar: 005930 expected_trade_date 정확" — KR 005930 기준 기대 거래일이 주말·휴장을 정확 반영
-- [ ] `is_trading_day`/`prev_trading_day`/`expected_trade_date` 3종 구현, §2.3 시그니처 준수(Q1·Q2 해소 후 표 확정)
-- [ ] **US=직전거래일 / KR=당일(거래일시) 분기** 단위 테스트 green (`test_expected_trade_date_us_returns_prev_even_on_tradingday` 포함)
-- [ ] 미지원 market → `ValueError`, 빈 결과 → `ValueError`(조용한 실패 없음)
-- [ ] **(§5 인용)** `pytest -q` green
-- [ ] **(§5 인용)** 편집 파일 `py_compile` 통과 (`python3 -m py_compile app/calendar.py`)
-- [ ] `tests/test_calendar.py` 신규 추가, 위 12 케이스 통과
-- [ ] PEP8 + 전 함수 타입주석 + (가능 시) frozen/불변 스타일 준수, `print()` 미사용
+@pytest.mark.unit
+def test_is_trading_day_weekend(monkeypatch):
+    monkeypatch.setattr(cal._KR, "valid_days", _fake_valid_days(set()))
+    assert cal.is_trading_day("KR", dt.date(2024, 1, 6)) is False  # 토
 
-> 주: §5의 나머지 항목(KrSource ohlcv/fundamentals, db.upsert_*, validate_response, test_tickers)은 BAL-11/BAL-12 DoD이며 본 이슈 게이트 아님.
 
----
+@pytest.mark.unit
+def test_prev_trading_day_skips_weekend(monkeypatch):
+    # 직전 거래일 = 2024-01-05(금), d=2024-01-08(월)
+    monkeypatch.setattr(cal._KR, "valid_days",
+                        _fake_valid_days({dt.date(2024, 1, 5)}))
+    assert cal.prev_trading_day("KR", dt.date(2024, 1, 8)) == dt.date(2024, 1, 5)
 
-## 8. Out of scope (W1 아님)
 
-- **US/FX/regime 어댑터** (W2) — calendar는 날짜만 산출, 데이터 fetch 없음
-- **collect.py 배치/백필** (W2) — `is_trading_day` 기반 `OK_HOLIDAY` skip 로직은 collect 책임(04-backend §8.2). calendar는 판정 함수만 제공
-- **metrics 계산** (W3) — per_pctile_5y, sma200, 52주, change_pct 등
-- **신선도 배지** `build_freshness_badge`/`FreshnessBadge` (04-backend §6.3) — **calendar.expected_trade_date를 소비**하지만 본 모듈 아님(W3 렌더 영역)
-- **models.py LLM/Card DTO** (W3), **프론트** (W5), **손익/수익률** (G8)
-- 임시공휴일 수동 보정·캘린더 캐싱/성능 최적화 — PoC 과설계 금지(mcal 기본값 신뢰)
+@pytest.mark.unit
+def test_expected_trade_date_kr_today_when_trading(monkeypatch):
+    monkeypatch.setattr(cal._KR, "valid_days",
+                        _fake_valid_days({dt.date(2024, 1, 2)}))
+    assert cal.expected_trade_date("KR", dt.date(2024, 1, 2)) == dt.date(2024, 1, 2)
+
+
+@pytest.mark.unit
+def test_expected_trade_date_kr_holiday_falls_back(monkeypatch):
+    # 신정 2024-01-01 휴장 → 직전 거래일 2023-12-29
+    monkeypatch.setattr(cal._KR, "valid_days",
+                        _fake_valid_days({dt.date(2023, 12, 29)}))
+    assert cal.expected_trade_date("KR", dt.date(2024, 1, 1)) == dt.date(2023, 12, 29)
+
+
+@pytest.mark.unit
+def test_expected_trade_date_us_always_prev(monkeypatch):
+    # US는 today가 거래일이어도 직전 거래일을 반환
+    monkeypatch.setattr(cal._US, "valid_days",
+                        _fake_valid_days({dt.date(2024, 1, 4)}))
+    assert cal.expected_trade_date("US", dt.date(2024, 1, 5)) == dt.date(2024, 1, 4)
+```
+
+**필수 케이스 매트릭스**:
+1. `is_trading_day` 평일 거래일 → True
+2. `is_trading_day` 주말 → False
+3. `is_trading_day` 공휴일(신정) → False
+4. `prev_trading_day` 월요일 → 직전 금요일(주말 건너뜀)
+5. `prev_trading_day` 화요일(전날 거래일) → 전날
+6. `expected_trade_date('KR', 거래일)` → today 그대로
+7. `expected_trade_date('KR', 휴장일)` → 직전 거래일
+8. `expected_trade_date('US', 거래일)` → today 아님, 직전 거래일 (KR/US 비대칭 보증)
+
+> 실 mcal을 쓰는 통합 테스트 1개(`005930` KR 평일 거래일 판정)는 선택. 결정성·격리 우선이면 전부 모킹으로 충분하다.
+
+## 7. DoD (Definition of Done)
+
+로드맵 `08-dev-roadmap.md §Week1`(M1a: `calendar` 포함 KR 데이터 레이어) + **orchestration §3 W-1 게이트** + **§5 검증 게이트** 인용:
+
+orchestration §3 W-1 calendar 게이트:
+> "calendar: 005930 expected_trade_date 정확"
+
+orchestration §5(W1 통합 DoD) 중 본 이슈 관련:
+> "`pytest -q` green, 편집 파일 `py_compile` 통과"
+
+**BAL-10 완료 조건 체크리스트**:
+- [ ] `app/calendar.py`에 확정 시그니처 3종 구현(인자순서 `(market, date)` 정합).
+- [ ] `python3 -m py_compile app/calendar.py` 통과 (degraded-session compile-check 수동 대체, orchestration §4).
+- [ ] `expected_trade_date('KR', d)` = 거래일이면 today / 휴장일이면 직전 거래일.
+- [ ] `expected_trade_date('US', d)` = 항상 직전 거래일(today 미포함).
+- [ ] `tests/test_calendar.py` §6 매트릭스 8케이스 전부 green (`pytest -q`).
+- [ ] 반환형이 순수 `date`(tz-naive). `datetime`/tz-aware 누출 없음.
+- [ ] seam 호환: `from app.calendar import expected_trade_date` import 가능(kr.py가 소비).
+
+## 8. Out of Scope (W1 아님 — 끌려가지 말 것)
+
+- **`collect.py`의 `OK_HOLIDAY` skip 로직**(04 §6.2) — W2. calendar는 판정만 제공.
+- **`build_freshness_badge`**(04 §6.3) — 신선도 배지 산출은 렌더 소비자, W3+.
+- **임시공휴일/대체휴일 보정** — mcal 기본 휴장표 신뢰, PoC 범위 밖.
+- **타임존/마감시각 정밀 계산** — `date` 단위만. 시·분 EOD 타이밍은 스케줄러(collect, W2) 책임.
+- **US/FX 어댑터, regime US(CAPE)** — orchestration §6 명시 Out of scope.
+- **다종목·KOSDAQ 등 시장 확장** — calendar는 KR/US 2개 거래소만. 서브마켓 구분 불필요(거래일은 거래소 단위).

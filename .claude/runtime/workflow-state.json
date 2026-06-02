@@ -18,7 +18,7 @@
     "BAL-12": ["BAL-8", "BAL-9", "BAL-10", "BAL-11"]
   },
   "waves": [
-    { "id": "W-1", "issues": ["BAL-8", "BAL-9", "BAL-10"], "parallel": true, "status": "planned" },
+    { "id": "W-1", "prestep": "W-1a: models.py W1 DTO 5종 단독 커밋(공유파일 충돌 제거)", "issues": ["BAL-8", "BAL-9", "BAL-10"], "parallel": "W-1b 3-way (W-1a 후)", "status": "planned" },
     { "id": "W-2", "issues": ["BAL-11"], "tier2": ["BAL-46", "BAL-47", "BAL-48"], "status": "pending" },
     { "id": "W-3", "issues": ["BAL-12"], "status": "pending" }
   ],
@@ -38,6 +38,7 @@
   "history": [
     { "ts": "2026-06-02", "event": "Phase1 start: epic BAL-1 + BAL-8~12 → In Progress, branch feat/bal-1-m1a-spike off 7a0a815" },
     { "ts": "2026-06-02", "event": "Phase3 plan: orchestration doc + seam contract written; dev-guide fan-out (workflow wf_9bfda1f9-6d1)" },
-    { "ts": "2026-06-02", "event": "dev-guide 5종 작성 완료(docs/BAL-{8..12}-dev-guide.md). verify가 seam v1 드리프트 적발 → orchestration §2를 canonical(04/§15)로 v2 정정. 9테이블 정정. W-2a 공통가드(validate/retry) 선행 의존 반영. regime KR→regime.py." }
+    { "ts": "2026-06-02", "event": "dev-guide 5종 작성 완료(docs/BAL-{8..12}-dev-guide.md). verify가 seam v1 드리프트 적발 → orchestration §2를 canonical(04/§15)로 v2 정정. 9테이블 정정. W-2a 공통가드(validate/retry) 선행 의존 반영. regime KR→regime.py." },
+    { "ts": "2026-06-02", "event": "BAL-9/10/11/12 dev-guide canonical 시그니처로 재생성(wf_83428d92-2a0, 전건 verify OK). models.py가 BAL-8/9/11 공유파일 → W-1a 선행 단독커밋 prestep 추가. BAL-1 에픽에 계획 댓글." }
   ]
 }

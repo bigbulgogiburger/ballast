@@ -1,205 +1,371 @@
-# BAL-12 dev-guide — validate: 빈 응답 가드 + 005930 적재 E2E 증명
+# BAL-12 개발 가이드 — validate: 빈 응답 가드 + 005930 적재 E2E 증명
 
-> SSoT 우선순위: `TECH-DESIGN.md §15`(Contract SoT) > `docs/05-database.md` / `docs/04-backend.md`.
-> 시그니처 정본: `docs/BAL-1-m1a-orchestration.md §2` seam 표. (이 가이드는 §2 시그니처를 발명 없이 그대로 가져옴. §2와 다른 문서가 충돌하면 본 가이드는 §2를 따르고 그 사실을 `## 미해결 질문`에 적시한다.)
-> 범위: **W1만**. Wave 3(순차) 최종 통합 이슈 — BAL-8·9·10·11 전부에 의존.
+> 정본 우선순위: `TECH-DESIGN.md §15` > `docs/04-backend.md` > `docs/05-database.md`. seam 시그니처 정본 = `docs/BAL-1-m1a-orchestration.md §2 (v2 canonical)`.
+> 본 가이드의 코드블록 시그니처는 위 정본과 정합 검증을 마쳤다. **그대로 사용**하고 임의 변형/발명하지 말 것.
+> 범위: W1(M1a 데이터 스파이크)만. Wave W-3(순차) 담당.
 
 ---
 
-## 1. 목표 & 배경
+## 1. 목표 & 배경 (W1 슬라이스 내 역할)
 
-### 이슈 요약
-BAL-12는 W1/M1a 데이터 스파이크의 **통합 증명(integration)** 이슈다. 두 가지를 한다.
+BAL-12는 BAL-1/M1a 수직 슬라이스의 **마지막 통합 증명(integration tracer)**이다. 두 가지를 책임진다.
 
-1. **빈 응답 가드**: 소스 어댑터가 빈 DataFrame / 빈 CSV / 0행을 돌려줬을 때 이를 "조용한 성공(OK)"으로 오인하지 않고 `EmptyResponseError`로 명시적으로 올리는 안전장치(`EmptyResponseError` + `validate_response`)를 `app/sources/__init__.py`에 둔다.
-2. **005930 적재 E2E**: `KrSource().ohlcv('005930')` / `fundamentals('005930')` → `db.upsert_price/upsert_funda` → `db.latest_price/latest_funda('005930')`가 **실수치 row**를 반환하는 끝-끝 경로를 스모크로 증명한다.
+1. **공통 가드(빈 응답 방지)** — `app/sources/__init__.py`에 `EmptyResponseError` / `retry` / `validate_response`를 정의. "조용한 실패(빈 CSV·0행)를 OK로 오인 금지"라는 SSoT §4 규칙(05 §1.8, 04 §7.1·§12)을 강제하는 단일 지점. **소유는 BAL-12지만 생성 시점은 W-2a**(BAL-11 `kr.py`가 import하므로 BAL-11보다 먼저 만든다 — orchestration §2.7·§3 순서 의존).
+2. **005930 E2E 증명** — `KrSource().ohlcv/fundamentals('005930')` → `db.upsert_price/funda(frozen dataclass)` → `db.latest_price/funda(conn,'005930')`가 실수치 row를 돌려주는 것을 끝까지 관통 확인. 슬라이스 전체(BAL-8 db / BAL-9 tickers / BAL-10 calendar / BAL-11 kr)가 한 종목으로 실제로 맞물리는지 검증한다.
 
-핵심 원칙(`05 §1.8`): **OK 판정은 "예외 안 남"이 아니라 "데이터 실재"(행수>0 + 최신일자 일치)**. Stooq/pykrx의 빈 응답을 OK로 받아들이면 비중·평가액이 조용히 틀어진다 — 이 회귀를 막는 게 BAL-12 가드의 존재 이유다.
+### 의존 (orchestration §1 DAG)
+- **BAL-8** `app/db.py`: `connect` / `init_schema` / `latest_price` / `latest_funda` / `upsert_price` / `upsert_funda` (frozen dataclass 인자)
+- **BAL-9** `app/tickers.py`: `to_source` 변환표 (E2E 가드테스트 + `tests/test_tickers.py`의 대상)
+- **BAL-11** `app/sources/kr.py`: `KrSource.ohlcv` / `fundamentals` — 본체에서 W-2a 가드를 import해 사용
+- **models.py 부분**: `OHLCV` / `Funda` frozen dataclass (orchestration §2.4, 04 §4.2)
+- BAL-12 자신이 소유하는 W-2a 가드 (`sources/__init__.py`)
 
-### W1 슬라이스(BAL-1) 내 역할/의존
-- DAG상 BAL-12는 **integration(전부 의존)** 노드: `BAL-8(db) · BAL-9(tickers) · BAL-10(calendar) · BAL-11(sources.kr)`가 모두 슬라이스 브랜치에 커밋된 뒤 마지막에 진입(`§3 Wave W-3, 순차`).
-- 산출 게이트(`§3 W-3 DoD 요약`): `validate_response`가 빈응답→`EmptyResponseError` / 005930 fetch→upsert→`latest_*` row / `tests/test_tickers.py` green.
-- 본 이슈는 새 도메인 로직을 거의 만들지 않는다. 8~11이 내놓은 seam을 **조립·검증**하는 얇은 통합 레이어 + 가드 함수 1개 + 예외 1개 + 테스트다.
+> 현재 레포 상태: 모든 모듈이 W0 스텁(`app/sources/__init__.py` 빈 파일, `app/db.py`·`app/models.py`·`app/sources/kr.py`는 docstring만). 따라서 BAL-12 E2E는 BAL-8/9/11/models 부분이 먼저 green이어야 통과한다. **W-2a 가드 단위테스트(아래 6.1)는 의존이 거의 없어 가장 먼저 작성·통과시킬 수 있다.**
+
+### 왜 BAL-12가 "통합 그 자체"인가
+orchestration §0: BAL-8~12는 격리 5-fanout이 아니라 단일 슬라이스. 최종 산출물(BAL-12)이 곧 통합. 따라서 BAL-12의 DoD = W1 통합 DoD(08 Week1, orchestration §5)와 동일하다.
 
 ---
 
 ## 2. 영향 파일
 
-| 구분 | 경로 | 내용 |
+| 파일 | 변경 | 비고 |
 |---|---|---|
-| **수정(스텁→구현)** | `app/sources/__init__.py` | `EmptyResponseError` + `validate_response` 추가 (현재 1줄 docstring만 존재) |
-| **생성** | `tests/test_tickers.py` | `to_source` 변환표 전 케이스 단위테스트 (BAL-9 순수계산 검증, W-3 DoD 명시 항목) |
-| **생성** | `tests/test_validate.py` | `validate_response`/`EmptyResponseError` 단위테스트 (순수계산) |
-| **생성** | `tests/test_e2e_kr_005930.py` | 005930 fetch→upsert→latest 적재 E2E 스모크 (어댑터 모킹 + 실 SQLite) |
+| `app/sources/__init__.py` | **신규 구현(W-2a)** | 현재 빈 파일. `EmptyResponseError`/`retry`/`validate_response` 추가. BAL-11보다 먼저 |
+| `tests/test_sources_guard.py` | **신규** | `validate_response` 빈응답 단위테스트(rows==0→raise, rows>0→pass) + `retry` 거동 |
+| `tests/test_tickers.py` | **신규** | `to_source` 변환표 전 케이스(04 §5.1 표) green. (모듈은 BAL-9 소유, 테스트는 W1 DoD라 BAL-12 범위) |
+| `tests/test_e2e_005930.py` | **신규** | 005930 fetch→upsert→latest_* 실수치 row E2E. KR 어댑터 네트워크는 **모킹** |
+| `tests/conftest.py` | 픽스처 추가 | 인메모리 DB conn 픽스처(`connect(":memory:")` + `init_schema`) |
 
-> ⚠️ **임포터 측 수정은 BAL-12 범위 밖**: `app/sources/kr.py`의 `from app.sources import validate_response` 사용은 BAL-11(`§2.5` "내부: ... validate_response")의 책임이다. BAL-12는 가드를 **제공**만 하고, kr.py가 이미 그 시그니처로 호출하도록 구현되어 있어야 한다. 호출 시그니처가 어긋나면 `## 미해결 질문`의 드리프트 이슈로 즉시 에스컬레이트(임의로 kr.py를 고치지 말 것 — 슬라이스 계약 위반).
-> 참고: `app/collect.py`(W2)도 `validate_response`를 부르지만 **W1 범위 밖**이라 본 이슈에서 건드리지 않는다.
-
----
-
-## 3. 구현 단계
-
-자체 분해(하위작업 없음). 순서는 의존 역순(가드 먼저 → 순수계산 테스트 → E2E).
-
-### 단계 1 — `EmptyResponseError` + `validate_response` (`app/sources/__init__.py`)
-- 위치는 `§2.6`이 제안한 `app/sources/__init__.py`. kr.py/us.py/fx.py가 패키지 루트에서 임포트하므로 순환참조 없는 최적 위치.
-- `EmptyResponseError(Exception)` 정의 — 빈 응답 전용 마커 예외.
-- `validate_response`는 `§2.6` 시그니처 `validate_response(df_or_obj, *, context: str) -> None`를 정본으로 구현(상세 `## 4`). 빈 응답이면 `EmptyResponseError`, 정상이면 `None`(부작용 없음).
-- **검증 포인트**: `python3 -m py_compile app/sources/__init__.py` 통과. `from app.sources import validate_response, EmptyResponseError` 임포트 성공.
-
-### 단계 2 — `tests/test_tickers.py` (BAL-9 변환표)
-- `docs/04-backend.md §5.1` 변환표(검증 가능 케이스)를 그대로 테스트 케이스로 박는다. `005930→005930.KS`, `BRK.B→BRK-B`(`§2.2` 예시) 포함.
-- `to_source` 정확한 시그니처는 `BAL-9` 구현(`§2.2`)을 정본으로 호출. (시그니처 충돌 가능성은 `## 미해결 질문` 참고 — 발명 금지.)
-- **검증 포인트**: `pytest tests/test_tickers.py -q` green. W-3 DoD "to_source 변환표 전 케이스 통과" 충족.
-
-### 단계 3 — `tests/test_validate.py` (가드 단위)
-- 빈 응답 → `EmptyResponseError` raise / 정상 응답 → 통과(예외 없음) 두 분기를 못박는다.
-- 순수계산이므로 네트워크 모킹 불필요(`08 §3` 횡단 규율: 순수 계산은 단위테스트 필수).
-- **검증 포인트**: `pytest tests/test_validate.py -q` green. W-1/W-3 DoD "빈 응답을 `EmptyResponseError`로 올림" 충족.
-
-### 단계 4 — `tests/test_e2e_kr_005930.py` (적재 E2E)
-- 흐름(`§2.6` E2E 계약): `KrSource().ohlcv/fundamentals('005930')` → `db.upsert_price/upsert_funda` → `db.latest_price/latest_funda(conn,'005930')`가 실수치 row 반환.
-- DB는 **실 SQLite**(`tmp_path / "ballast.db"` 또는 `:memory:`)에 `db.connect` + `db.init_schema`로 스키마 구축 — 적재 경로를 진짜로 통과시켜야 "데이터 실재"를 증명한다.
-- 외부 네트워크(pykrx/FDR/네이버)는 **모킹**(프로젝트 룰: 외부 네트워크 의존은 테스트에서 모킹). `KrSource.ohlcv`/`fundamentals`가 결정적 `OHLCV`/`Funda`를 반환하도록 패치.
-- assert: `latest_price` row의 `close_raw`/`week52_high`/`sma200`이 모킹한 실수치와 일치, `latest_funda` row의 `per`/`pbr`/`per_pctile_5y`가 일치.
-- **검증 포인트**: `pytest tests/test_e2e_kr_005930.py -q` green. W-3 DoD "005930 fetch→upsert→latest_* row" 충족.
-
-### 단계 5 — 통합 게이트 확인(수동 스모크)
-- `08 Week1 DoD`의 라이브 명령은 실 네트워크 의존이라 **수동 스모크**(테스트 자동화 아님, `08 §3` "어댑터·LLM = 계약 테스트 + 수동 스모크"):
-  - `python -c "from app.sources.kr import KrSource; print(KrSource().ohlcv('005930'))"` → close_raw·52주·sma200 실수치.
-  - `fundamentals('005930')` → PER/PBR/배당 + per_pctile_5y.
-- **검증 포인트**: `pytest -q` 전체 green + 편집 파일 `py_compile` 통과(`§5`, degraded-session에서 PostToolUse 훅 부재 → 수동 실행).
+> **건드리지 않을 것**: `app/db.py`·`app/tickers.py`·`app/sources/kr.py`·`app/models.py` 본체(각각 BAL-8/9/11 소유). BAL-12는 그 시그니처를 **소비/검증**만 한다. 가드(`sources/__init__.py`)만 BAL-12가 작성.
 
 ---
 
-## 4. 인터페이스
+## 3. 구현 단계 (하위작업 / 자체분해 단위 + 검증포인트)
 
-> 시그니처 정본 = `docs/BAL-1-m1a-orchestration.md §2.6`. 아래는 §2.6을 그대로 가져와 구체화한 것이며, 새 시그니처는 발명하지 않았다. **§2.6과 다른 문서(`04 §7.1`)의 `validate_response` 시그니처가 충돌**한다 — 본 가이드는 규칙에 따라 §2.6을 정본으로 채택하고, 충돌 사실을 `## 미해결 질문 Q1`에 적시한다.
+### 단계 A — W-2a 공통 가드 생성 (`app/sources/__init__.py`)
+가장 먼저. BAL-11이 import한다.
+- A1. `EmptyResponseError(Exception)` 정의 → **검증**: `from app.sources import EmptyResponseError` import 성공
+- A2. `validate_response(rows, latest, expected) -> None` — `rows == 0`이면 `EmptyResponseError` raise → **검증**: `validate_response(0, "x", "y")`가 raise, `validate_response(1, d, d)`가 None
+- A3. `retry(times=3, backoff=1.5)` 데코레이터 — 지수 백오프, 마지막 실패는 raise → **검증**: 항상 실패하는 함수에 `@retry(2)`면 정확히 2회 호출 후 마지막 예외 raise
+- A4. `python3 -m py_compile app/sources/__init__.py` 통과
 
-### 4.1 `app/sources/__init__.py` (BAL-12 — 본 이슈가 생성)
+### 단계 B — 가드 단위테스트 (`tests/test_sources_guard.py`)
+- B1. `validate_response` 빈응답 동작(아래 6.1) → **검증**: `pytest tests/test_sources_guard.py -q` green
+- B2. `retry` 횟수/마지막 raise 동작 → **검증**: 호출 카운트 assert
+
+### 단계 C — to_source 변환표 테스트 (`tests/test_tickers.py`)
+- C1. 04 §5.1 표 전 케이스(아래 6.2) → **검증**: `pytest tests/test_tickers.py -q` green (BAL-9 구현 완료 전제)
+
+### 단계 D — 005930 E2E (`tests/test_e2e_005930.py`)
+- D1. conftest에 인메모리 DB 픽스처 추가 → **검증**: `connect(":memory:")` + `init_schema(conn)` 후 9테이블 존재
+- D2. `KrSource.ohlcv`/`fundamentals`의 네트워크 호출을 모킹해 결정적 `OHLCV`/`Funda` 반환 → **검증**: 반환 타입이 frozen dataclass
+- D3. `db.upsert_price(conn, ohlcv)` / `db.upsert_funda(conn, funda)` → `db.latest_price(conn,'005930')` / `latest_funda` → **검증**: row가 `None`이 아니고 `close_raw`·`week52_high`·`sma200`·`per`가 실수치
+- D4. (선택, DoD 스모크) `pytest -q` 전체 green + 편집 파일 `py_compile` 통과
+
+> **자체분해 원칙**: A→B는 의존 없음(먼저 끝낼 수 있음). C는 BAL-9, D는 BAL-8+11+models 완료 후. degraded-session이라 편집마다 `python3 -m py_compile <file>` 수동 실행(orchestration §4).
+
+---
+
+## 4. 인터페이스 (확정 시그니처 구체화)
+
+### 4.1 `app/sources/__init__.py` — 공통 가드 (정본 04 §7.1 / orchestration §2.7)
 
 ```python
+"""sources 공통 안정성 가드 (04 §7.1, SSoT §4·§5).
+
+조용한 실패(빈 CSV·0행)를 OK로 오인하지 않기 위한 단일 지점.
+BAL-11(kr.py)이 import하므로 W-2a(BAL-11 앞)에 먼저 생성한다.
+"""
+import functools
+import time
+from collections.abc import Callable
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
 class EmptyResponseError(Exception):
-    """소스가 빈 응답(0행/빈 DF/None)을 반환 — '조용한 실패'를 OK로 오인 금지 (05 §1.8)."""
+    """응답 행수 0 — '조용한 실패'를 OK로 오인 방지 (SSoT §4 OK=데이터 실재)."""
 
 
-def validate_response(df_or_obj, *, context: str) -> None:
-    """소스 응답이 '데이터 실재'인지 검증. 빈 응답이면 EmptyResponseError, 정상이면 None(부작용 없음).
+def validate_response(rows: int, latest: str, expected: str) -> None:
+    """응답 유효성: 행수>0 (04 §7.1, 05 §1.8).
 
-    Parameters
-    ----------
-    df_or_obj : pandas.DataFrame | list | object | None
-        어댑터가 받은 원천 응답. 빈 여부 판정 대상.
-    context : str (keyword-only)
-        실패 메시지·로깅용 식별자 (예: 'kr.ohlcv 005930').
-
-    Raises
-    ------
-    EmptyResponseError
-        df_or_obj가 비었을 때(05 §1.8: OK=데이터 실재, 빈 CSV OK 오인 금지).
+    rows == 0 → EmptyResponseError. (Stooq 빈 CSV 등 조용한 실패 차단.)
+    latest/expected는 '최신일자 vs 기대거래일' 대조용 인자(향후 W2 collect에서 활용).
+    W1에서는 rows==0 가드가 핵심이며 날짜 불일치는 호출측 책임으로 둔다.
     """
-```
-- **반환형**: `None`(가드 함수, 통과 시 무반환).
-- **예외**: `EmptyResponseError` (빈 응답일 때만).
-- **"빈" 판정 범위**(§2.6 "빈 응답을 OK로 오인 금지"): `None`, 길이 0인 시퀀스/DataFrame(`.empty`). 구체 판정 규칙은 `## 미해결 질문 Q2` 참조 — 본문에 임의 규칙을 주입하지 않는다.
+    if rows == 0:
+        raise EmptyResponseError("행수 0 — 조용한 실패")
 
-### 4.2 의존 seam (BAL-8/9/11 — 본 이슈가 소비, 시그니처는 각 이슈가 정본)
+
+def retry(times: int = 3, backoff: float = 1.5) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    """@retry(3) — 지수 백오프. 마지막 실패는 raise (collect가 종목 단위로 격리)."""
+
+    def deco(fn: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(fn)
+        def wrapper(*args: object, **kwargs: object) -> T:
+            last: Exception | None = None
+            for attempt in range(times):
+                try:
+                    return fn(*args, **kwargs)
+                except Exception as e:  # noqa: BLE001 — 마지막 시도면 재raise
+                    last = e
+                    if attempt < times - 1:
+                        time.sleep(backoff ** attempt)
+            assert last is not None
+            raise last
+
+        return wrapper
+
+    return deco
+```
+
+| 심볼 | 파라미터 | 반환 | 예외 |
+|---|---|---|---|
+| `EmptyResponseError` | — | — | Exception 서브클래스 |
+| `validate_response` | `rows: int, latest: str, expected: str` | `None` | `rows==0` → `EmptyResponseError` |
+| `retry` | `times: int = 3, backoff: float = 1.5` | 데코레이터 | 마지막 시도 실패 시 원 예외 re-raise |
+
+> **시그니처 고정**: `validate_response`는 `(rows:int, latest:str, expected:str)`. `df_or_obj`/`context`/키워드전용 형태 **아님**(orchestration §2.7이 v1을 정정). 변형 금지.
+> `retry`의 `time.sleep`은 테스트에서 `monkeypatch`로 무력화(6.1 B2)해 느려지지 않게 한다.
+
+### 4.2 BAL-12가 소비하는 의존 시그니처 (정의는 타 이슈 소유 — 호출만)
 
 ```python
-# BAL-9 app/tickers.py (§2.2) — test_tickers.py가 호출
-def to_source(canonical: str, market: str | None = None) -> str   # 005930→005930.KS, BRK.B→BRK-B
+# BAL-8 (db.py) — 인메모리/파일 SQLite
+def connect(db_path: str = "data/ballast.db") -> sqlite3.Connection   # row_factory=Row, PRAGMA FK/WAL/busy_timeout (05 §0)
+def init_schema(conn) -> None                                          # 9테이블 + 인덱스 ②④ + settings seed (05 §1, §15.5)
+def upsert_price(conn, row: OHLCV) -> None   # frozen dataclass → 내부 asdict→named bind (05 §4.1 ON CONFLICT)
+def upsert_funda(conn, row: Funda) -> None
+def latest_price(conn, ct: str) -> sqlite3.Row | None    # 05 §3.1 MAX(trade_date)
+def latest_funda(conn, ct: str) -> sqlite3.Row | None    # 05 §3.2
 
-# BAL-11 app/sources/kr.py (§2.5) — E2E가 호출
+# BAL-11 (sources/kr.py)
 class KrSource:
-    def ohlcv(self, ct: str) -> OHLCV          # close_raw/close_adj/52주/sma200 (05 §1.3)
-    def fundamentals(self, ct: str) -> Funda   # PER/PBR/배당 → per_pctile_5y
+    def ohlcv(self, ct: str) -> OHLCV          # close_raw/close_adj/week52_high/week52_low/sma200 실수치
+    def fundamentals(self, ct: str) -> Funda   # per/pbr/div_yield/per_pctile_5y
 
-# BAL-8 app/db.py (§2.1) — E2E가 호출
-def connect(db_path: str = "data/ballast.db") -> sqlite3.Connection
-def init_schema(conn) -> None
-def upsert_price(conn, row) -> None            # 05 §4.1 ON CONFLICT DO UPDATE
-def upsert_funda(conn, row) -> None
-def latest_price(conn, ct: str) -> sqlite3.Row | None   # 05 §3.1
-def latest_funda(conn, ct: str) -> sqlite3.Row | None   # 05 §3.2
+# models.py (orchestration §2.4, 04 §4.2) — 첫 필드 canonical_ticker
+@dataclass(frozen=True) class OHLCV: canonical_ticker; trade_date; close_raw; close_adj; ccy; week52_high; week52_low; sma200
+@dataclass(frozen=True) class Funda: canonical_ticker; trade_date; per; pbr; div_yield; per_pctile_5y; pbr_pctile_5y; report_date
 ```
-- `OHLCV`/`Funda` DTO 필드는 `§2.4`(= `05 §1.3/1.4` 컬럼 정합)를 정본으로 한다.
-- `upsert_price/upsert_funda`의 인자 `row`가 `OHLCV`/`Funda` frozen dataclass인지 dict/tuple인지의 어댑테이션 책임은 BAL-8에 있다 — `## 미해결 질문 Q3` 참조.
+
+> **upsert 인자형**: frozen dataclass(`OHLCV`/`Funda`)를 그대로 넘긴다. caller(BAL-12 E2E)가 dict로 변환하지 않는다(orchestration §2.1 결정).
+> `latest_*`는 `sqlite3.Row`라 컬럼 접근은 `row["close_raw"]`처럼 키 인덱싱.
 
 ---
 
 ## 5. 엣지 & 리스크
 
-| 엣지/리스크 | 출처 | 대응 |
-|---|---|---|
-| pykrx/FDR가 특정 종목·기간 **빈 DF** 반환 | `08 W1 리스크`, `05 §1.8` | `validate_response`가 0행을 `EmptyResponseError`로 승격 → OK 오인 차단. BAL-11이 `@retry(3)` + 가드 호출(§2.5). |
-| **백필 워밍업**(`per_pctile_5y` NULL) | `05 §1.4`, `08 W1 리스크` | E2E는 `per_pctile_5y`가 **NULL이어도 통과**해야 함(NULL 허용 컬럼). 가드는 percentile NULL을 "빈 응답"으로 오판하면 안 됨 — `Funda` 객체 자체가 실재하면 OK. |
-| **휴장일**(OK_HOLIDAY) | `05 §1.8` | W1 BAL-12 가드는 "행수 0"만 본다. 휴장/기대일 불일치 판정은 calendar.expected_trade_date 기반이며 그 강제 위치는 `## 미해결 질문 Q1`(가드가 latest/expected를 받느냐)에 종속. E2E는 모킹 데이터라 휴장 영향 없음. |
-| **NULL percentile를 빈 응답으로 오인** | 위 + `05 §1.4` | 가드 판정 대상은 **컨테이너의 빈 여부**이지 개별 필드 NULL이 아님(Q2). `Funda(per_pctile_5y=None)`는 정상. |
-| **조정가 stale**(close_adj 누적 사용) | `05 §1.3`, `04 §7.2` | W1 BAL-12 범위 밖(fresh 재계산은 BAL-11 `ohlcv`의 책임, `§2.5`). E2E는 BAL-11이 넘긴 값을 그대로 적재·재조회만 검증. |
-| **빈 CSV가 예외 없이 흘러감** | `05 §1.8`, `04 §7.1` | 핵심 회귀. test_validate.py에 "빈 입력→raise" 케이스로 고정. |
-| 같은 거래일 중복 적재 | `05 §4.1` PK(ct, trade_date) | upsert `ON CONFLICT DO UPDATE`(BAL-8). E2E를 두 번 돌려도 멱등 — 같은 row 1건 유지 검증 가능(선택). |
-| **degraded-session**: PostToolUse `py_compile`/리뷰 훅 미로드 | `BAL-1 §4` | 편집 후 `python3 -m py_compile` 수동 실행, 커밋 전 aggregate-verdict 수동 확인. |
+- **가드 생성 순서**: `sources/__init__.py`를 BAL-11보다 먼저 만들지 않으면 `kr.py`의 `from app.sources import retry, validate_response, EmptyResponseError`가 ImportError. → 단계 A를 최우선(orchestration §3 W-2a).
+- **`validate_response`의 latest/expected 미사용**: W1 본체는 `rows==0`만 강제한다. 날짜 일치 검사(±허용)는 04 §7.1이 명시하나 W2 collect의 `validate_response(rows=1, latest=ohlcv.trade_date, expected=...)` 호출지점에서 의미를 가진다. W1에서 날짜 로직을 넣으면 거래일 모킹 부담이 생기므로 **rows 가드만** 구현(과설계 금지). → 미해결 질문 1.
+- **E2E 네트워크 비결정성**: pykrx/FDR/네이버 실호출은 테스트에서 금지(스타일 규칙). `KrSource.ohlcv`/`fundamentals` 내부의 데이터 fetch 경계를 `monkeypatch`로 모킹해 결정적 `OHLCV`/`Funda`를 반환시킨다. 실제 네트워크 스모크는 DoD의 `python -c "..."` 수동 1회(아래 7)로 별도 수행.
+- **인메모리 DB와 WAL**: `connect(":memory:")`에서 `PRAGMA journal_mode=WAL`은 무시되거나 memory 모드로 동작 — 단위테스트엔 영향 없음. E2E는 인메모리로 충분.
+- **frozen dataclass upsert**: `db.upsert_*`가 `dataclasses.asdict` 후 named-bind한다는 전제. dataclass 필드명 ↔ 테이블 컬럼명이 1:1이어야 한다(`OHLCV.close_raw`→`price_snapshot.close_raw`). 불일치는 BAL-8 책임이나 E2E가 실패로 잡아낸다(통합 증명의 목적).
+- **`retry` 마지막 시도 백오프**: 마지막 시도 후엔 sleep하지 않는다(불필요 지연). 위 구현은 `attempt < times-1`로 처리.
+- **빈 응답을 `[]`로 받는 headlines와 혼동 금지**: `validate_response`는 시세/펀더(0행=실패)에만 적용. 뉴스 빈응답은 정상(`[]`)이라 가드 미적용(orchestration §2.5). BAL-12 가드테스트는 headlines를 다루지 않는다.
 
 ---
 
-## 6. 테스트 계획
+## 6. 테스트 계획 (pytest, 어댑터 = 모킹)
 
-> 순수계산=단위 필수, 어댑터=모킹/계약(`08 §3`, 프로젝트 룰). pytest + `@pytest.mark.unit`/`integration` 마커(testing.md).
+> 마커: `@pytest.mark.unit`(가드·tickers) / `@pytest.mark.integration`(E2E). 네트워크 전부 모킹. `time.sleep`은 monkeypatch.
 
-### `tests/test_validate.py` (단위 — 순수계산)
-| 테스트명 | 검증 |
-|---|---|
-| `test_validate_raises_on_empty_dataframe` | 빈 `pd.DataFrame()` → `EmptyResponseError` |
-| `test_validate_raises_on_none` | `None` 입력 → `EmptyResponseError` |
-| `test_validate_raises_on_empty_list` | `[]` → `EmptyResponseError` |
-| `test_validate_passes_on_nonempty` | 1행 이상 DF/list → 예외 없음, 반환 `None` |
-| `test_empty_response_error_is_exception` | `EmptyResponseError`가 `Exception` 서브클래스 |
+### 6.1 `tests/test_sources_guard.py` — 가드 단위 (단계 B, 의존 최소)
 
-> 정확한 "빈" 판정 케이스 집합은 `## 미해결 질문 Q2` 확정 후 케이스 가감. 위는 §2.6 의미(빈→raise)에서 모순 없이 도출되는 최소 집합.
+```python
+import pytest
+from app.sources import EmptyResponseError, retry, validate_response
 
-### `tests/test_tickers.py` (단위 — 순수계산, W-3 DoD 명시)
-| 테스트명 | 검증 (출처 `04 §5.1` 표) |
-|---|---|
-| `test_to_source_kr_samsung` | `005930`(KR) → `005930.KS` |
-| `test_to_source_us_voo` | `VOO`(US) → `VOO` |
-| `test_to_source_us_brk_b` | `BRK.B`(US) → `BRK-B` |
 
-> `to_source` 정확한 파라미터(§2.2 `(canonical, market)` vs `04 §5.1` `(source, ct, market)`)는 `## 미해결 질문 Q4`. 본 가이드는 §2.2를 정본으로 작성하되, BAL-9 실제 구현 시그니처에 맞춰 호출. KOSDAQ `.KQ`/stooq 변형은 W1 005930 슬라이스 밖이라 케이스 생략(끌려가지 말 것).
+@pytest.mark.unit
+def test_validate_response_raises_on_empty() -> None:
+    # rows == 0 → EmptyResponseError (05 §1.8 OK=데이터 실재)
+    with pytest.raises(EmptyResponseError):
+        validate_response(rows=0, latest="2026-06-01", expected="2026-06-01")
 
-### `tests/test_e2e_kr_005930.py` (integration — 모킹 + 실 SQLite)
-| 테스트명 | 검증 |
-|---|---|
-| `test_ohlcv_upsert_latest_roundtrip` | `KrSource.ohlcv` 모킹 → `upsert_price` → `latest_price(conn,'005930')` row의 close_raw/week52_high/sma200 == 모킹값 |
-| `test_fundamentals_upsert_latest_roundtrip` | `KrSource.fundamentals` 모킹 → `upsert_funda` → `latest_funda(conn,'005930')` row의 per/pbr/per_pctile_5y == 모킹값(percentile NULL 케이스 포함) |
-| `test_latest_returns_none_when_empty`(선택) | 적재 전 `latest_price` → `None`(0건 보류 경로, `05 §3.1` G3) |
 
-- 픽스처: `tmp_path` 기반 SQLite + `db.init_schema`. `monkeypatch`로 `KrSource.ohlcv`/`fundamentals` 또는 그 내부 pykrx/FDR 호출을 패치.
-- **네트워크 0회** 보장(룰 준수). 모킹 객체는 `§2.4` `OHLCV`/`Funda` 필드 전량 채움.
+@pytest.mark.unit
+def test_validate_response_passes_on_nonempty() -> None:
+    # rows > 0 → None (예외 없음)
+    assert validate_response(rows=1, latest="2026-06-01", expected="2026-06-01") is None
+
+
+@pytest.mark.unit
+def test_retry_reraises_after_exhausting(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.sources.time.sleep", lambda *_: None)  # 백오프 즉시
+    calls = {"n": 0}
+
+    @retry(times=3)
+    def always_fail() -> None:
+        calls["n"] += 1
+        raise ValueError("boom")
+
+    with pytest.raises(ValueError):
+        always_fail()
+    assert calls["n"] == 3  # 정확히 times회 시도
+
+
+@pytest.mark.unit
+def test_retry_succeeds_after_transient(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.sources.time.sleep", lambda *_: None)
+    calls = {"n": 0}
+
+    @retry(times=3)
+    def flaky() -> str:
+        calls["n"] += 1
+        if calls["n"] < 2:
+            raise ValueError("transient")
+        return "ok"
+
+    assert flaky() == "ok"
+    assert calls["n"] == 2
+```
+
+### 6.2 `tests/test_tickers.py` — to_source 변환표 (단계 C, 04 §5.1 표)
+
+```python
+import pytest
+from app.tickers import to_source
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "source, ct, market, expected",
+    [
+        ("yf", "005930", "KR", "005930.KS"),
+        ("finnhub", "005930", "KR", "005930.KS"),
+        ("stooq", "005930", "KR", "005930.KS"),
+        ("pykrx", "005930", "KR", "005930"),
+        ("yf", "VOO", "US", "VOO"),
+        ("finnhub", "VOO", "US", "VOO"),
+        ("stooq", "VOO", "US", "voo.us"),
+        ("yf", "BRK.B", "US", "BRK-B"),
+        ("finnhub", "BRK.B", "US", "BRK-B"),
+        ("stooq", "BRK.B", "US", "brk-b.us"),
+    ],
+)
+def test_to_source_table(source: str, ct: str, market: str, expected: str) -> None:
+    assert to_source(source, ct, market) == expected
+```
+
+> 표 출처 = 04 §5.1(`005930.KS`/`voo.us`/`BRK-B`/`brk-b.us`)·orchestration §2.2. `fdr`/`fmp`/`dart` 케이스는 04 §5.1 표에 명시값이 없어 W1 변환표 테스트에서 제외(추측 금지). KOSDAQ `.KQ`는 W2(다종목)로 유보(orchestration §2.2 known limitation).
+
+### 6.3 `tests/conftest.py` — 인메모리 DB 픽스처 (단계 D1)
+
+```python
+import pytest
+from app import db
+
+
+@pytest.fixture
+def conn():
+    c = db.connect(":memory:")
+    db.init_schema(c)
+    yield c
+    c.close()
+```
+
+### 6.4 `tests/test_e2e_005930.py` — 적재 E2E (단계 D, 어댑터 모킹)
+
+```python
+import pytest
+from app.db import latest_funda, latest_price, upsert_funda, upsert_price
+from app.models import Funda, OHLCV
+from app.sources.kr import KrSource
+
+
+@pytest.fixture
+def fake_ohlcv() -> OHLCV:
+    return OHLCV(
+        canonical_ticker="005930", trade_date="2026-06-01",
+        close_raw=81000.0, close_adj=81000.0, ccy="KRW",
+        week52_high=88000.0, week52_low=68000.0, sma200=75000.0,
+    )
+
+
+@pytest.fixture
+def fake_funda() -> Funda:
+    return Funda(
+        canonical_ticker="005930", trade_date="2026-06-01",
+        per=14.2, pbr=1.3, div_yield=2.1,
+        per_pctile_5y=42.0, pbr_pctile_5y=38.0, report_date="2026-03-31",
+    )
+
+
+@pytest.mark.integration
+def test_005930_ohlcv_load_roundtrip(conn, monkeypatch, fake_ohlcv: OHLCV) -> None:
+    # 어댑터 네트워크 경계 모킹 → 결정적 OHLCV (실호출 금지)
+    monkeypatch.setattr(KrSource, "ohlcv", lambda self, ct: fake_ohlcv)
+
+    ohlcv = KrSource().ohlcv("005930")          # frozen dataclass
+    upsert_price(conn, ohlcv)                    # frozen dataclass 인자
+    row = latest_price(conn, "005930")           # sqlite3.Row | None
+
+    assert row is not None
+    assert row["close_raw"] == 81000.0
+    assert isinstance(row["week52_high"], float)
+    assert isinstance(row["sma200"], float)
+
+
+@pytest.mark.integration
+def test_005930_funda_load_roundtrip(conn, monkeypatch, fake_funda: Funda) -> None:
+    monkeypatch.setattr(KrSource, "fundamentals", lambda self, ct: fake_funda)
+
+    funda = KrSource().fundamentals("005930")
+    upsert_funda(conn, funda)
+    row = latest_funda(conn, "005930")
+
+    assert row is not None
+    assert isinstance(row["per"], float)
+    assert row["per_pctile_5y"] == 42.0
+```
+
+> 모킹은 `KrSource.ohlcv`/`fundamentals` **메서드 경계**에서. 어댑터 내부 pykrx/FDR 함수를 모킹하고 싶다면 BAL-11 구현의 실제 fetch 경계명에 맞춰 `monkeypatch.setattr`을 조정한다(이름은 BAL-11 소유라 본 가이드는 메서드 경계 모킹을 기본으로 둠). 실제 네트워크 검증은 DoD 수동 스모크(7)로 분리.
+
+### 실행
+```bash
+python3 -m py_compile app/sources/__init__.py
+pytest tests/test_sources_guard.py tests/test_tickers.py tests/test_e2e_005930.py -q
+```
 
 ---
 
-## 7. DoD (체크리스트)
+## 7. DoD (로드맵 08 Week1 + orchestration §5 인용)
 
-`08 Week1 DoD` + `BAL-1 §5`(W1 통합 DoD)에서 BAL-12 해당 항목 인용:
+orchestration §5(W1 통합 DoD) 그대로:
+- [ ] `python -c "from app.sources.kr import KrSource; print(KrSource().ohlcv('005930'))"` → close_raw·52주·sma200 **실수치** (수동 네트워크 스모크 1회)
+- [ ] `fundamentals('005930')` → PER/PBR/배당 + `per_pctile_5y`(5년 백필)
+- [ ] `db.upsert_*` 적재 후 `latest_price(conn,'005930')` row 반환 → **6.4 E2E로 자동화**
+- [ ] `tests/test_tickers.py`: to_source 변환표 전 케이스 통과 → **6.2**
+- [ ] `validate_response`가 빈 응답을 `EmptyResponseError`로 올림 → **6.1**
+- [ ] `pytest -q` green, 편집 파일 `py_compile` 통과
 
-- [ ] (`§5`) `validate_response`가 빈 응답을 `EmptyResponseError`로 올림 (빈 CSV를 OK로 오인 안 함, `05 §1.8`)
-- [ ] (`§5` / `08 W1 DoD`) `db.upsert_*` 적재 후 `latest_price(conn,'005930')` row 반환 — close_raw·52주·sma200 실수치
-- [ ] (`08 W1 DoD`) `fundamentals('005930')` 적재 → `latest_funda` PER/PBR/배당 + per_pctile_5y(5년 백필, NULL 허용)
-- [ ] (`§5` / `08 W1 DoD`) `tests/test_tickers.py`: to_source 변환표 전 케이스 통과
-- [ ] (`§5`) `pytest -q` green, 편집 파일 `py_compile` 통과
-- [ ] (`08 W1 DoD` 수동 스모크) `python -c "from app.sources.kr import KrSource; print(KrSource().ohlcv('005930'))"` → 실수치 출력
-- [ ] (`BAL-1 §4`) degraded-session 수동 게이트: 편집 후 `py_compile` 직접 실행 + 커밋 전 aggregate-verdict 확인
+08 Week1 DoD 추가 정합(중복 항목 제외):
+- [ ] `validate_response`가 빈 CSV를 OK로 오인 안 함(05 §1.8) — 6.1 `test_validate_response_raises_on_empty`로 증명
+
+> BAL-12의 DoD = W1 슬라이스 통합 DoD(orchestration §0: 최종 산출물이 곧 통합). 따라서 BAL-8/9/11 DoD가 선행 green이어야 6.4 E2E가 통과한다.
 
 ---
 
 ## 8. Out of scope (W1 아님 — 끌려가지 말 것)
 
-`BAL-1 §6` / `08 §4`·`§W2~` 인용:
+orchestration §6 + 본 이슈 경계:
+- **가드 본체(소유는 BAL-12지만 import는 BAL-11)** 외의 어댑터 로직 — `KrSource.ohlcv`/`fundamentals` 구현은 BAL-11 소유. BAL-12는 모킹해 소비만.
+- `validate_response`의 **날짜 일치(latest vs expected ±허용) 검사** — W2 collect 호출지점에서 의미. W1은 rows 가드만.
+- **headlines/regime 가드** — 뉴스 빈응답=`[]` 정상(가드 미적용), regime은 별도 `sources/regime.py`(BAL-48). BAL-12 범위 밖.
+- US/FX 어댑터·`upsert_fx`·collect 배치·백필·metrics 계산·LLM/Card DTO·프론트 — 전부 W2+ (orchestration §6).
+- `db.py`/`tickers.py`/`kr.py`/`models.py` **본체 구현·리팩토링** — 각각 BAL-8/9/11 소유. BAL-12는 시그니처 소비/검증만.
 
-- **US/FX/regime 어댑터** (`sources/us.py`·`fx.py`·`regime.py` US 절반) — W2.
-- **`collect.py` 배치·백필**: `run_collect`/`_status_of`/`collect_run` upsert/`missing_tickers` JSON/`TokenBucket`/`OK_HOLIDAY`·`PARTIAL` 분기 판정 — W2. (BAL-12 가드는 collect가 쓰지만 collect 자체는 안 만듦.)
-- **metrics 계산**(통화정규화·5/25·valuation·trend·regime) — W3.
-- **LLM/Card DTO**(`SecurityCard`·`BriefingDoc`·`SecurityLLMOut`·`HoldExcluded` 등 §15.2 LLM·렌더 DTO) — W3.
-- **프론트엔드**(templates/static) — W5.
-- **손익/수익률**(G8) — PoC 범위 밖.
-- `validate_response`의 **휴장·기대일 일치 검증 강제 위치**가 collect 쪽이라면 그 적용은 W2 — 본 이슈는 가드 함수의 빈-응답 책임만 확정.
+---
+
+## 부록 — 정합성 노트 (정본 교차검증 결과)
+- `validate_response(rows, latest, expected) -> None` / `rows==0→EmptyResponseError`: 04 §7.1(L454-459)·05 §1.8(L209)·orchestration §2.7 일치. ✅
+- `retry(times=3, backoff=1.5)`: 04 §7.1(L451)·orchestration §2.7 일치. ✅
+- `upsert_price/funda(conn, row: OHLCV/Funda)` frozen dataclass 인자: orchestration §2.1 결정(L57-63). 04 §8.2는 `db.upsert_price(ohlcv)` 호출형으로 정합. ✅
+- `latest_price/funda(conn, ct) -> sqlite3.Row | None`: 04 §3.2(L175-180)·05 §3.1-3.2·orchestration §2.1 일치. ✅
+- `OHLCV`/`Funda` 첫 필드 `canonical_ticker`: 04 §4.2(L242,253)·§15.2·orchestration §2.4 일치(v1 `OHLCV.ct` 오류 정정됨). ✅
+- to_source 표(`005930.KS`/`voo.us`/`BRK-B`/`brk-b.us`): 04 §5.1(L362-368)·orchestration §2.2 일치. ✅
+- §15(TECH-DESIGN)와 모순 없음: §15.2 DTO·§15.4 status·§15.5 settings 모두 04/05와 정합. ✅

@@ -1,200 +1,237 @@
-# BAL-9 dev-guide — `app/tickers.py`: 변환표·코어 ETF 화이트리스트·분류
+# BAL-9 개발 가이드 — `app/tickers.py` (티커 변환표 · 코어 ETF 화이트리스트 · category 분류)
 
-> SSoT 우선순위: `TECH-DESIGN.md §15`(Contract SoT) > `docs/05-database.md` / `docs/04-backend.md`.
-> **시그니처 정본 = `docs/BAL-1-m1a-orchestration.md §2.2`** (seam 계약 표). 본 가이드는 그 표를 그대로 가져와 구체화한다.
-> 범위: W1(BAL-1 슬라이스) 중 BAL-9 단일 이슈. 외부 네트워크 의존 0 → 순수 단위테스트로 완전 못박는다.
+> 정본 우선순위: `TECH-DESIGN.md §15` > `docs/04-backend.md §5.1/§5.2/§5.3` > `docs/05-database.md §1.1`. seam 시그니처 정본 = `docs/BAL-1-m1a-orchestration.md §2.2(v2)`.
+> 본 가이드의 "확정 시그니처"는 canonical 검증을 마친 정본이다. **그대로 사용**하라 — 시그니처 드리프트는 이미 해소됨(임의 변형/발명 금지).
+> 범위: W1 (Wave-1), BAL-8/BAL-10과 **3-way 진짜 병렬**(파일 비중복, 충돌 0).
 
 ---
 
-## 1. 목표 & 배경
+## 1. 목표 & 배경 (W1 슬라이스 내 역할 / 의존)
 
-**이슈 요약.** `app/tickers.py`는 BAL-1(M1a 데이터 스파이크) 수직 슬라이스의 **격리 foundation 3종**(BAL-8 db / BAL-9 tickers / BAL-10 calendar) 중 하나다. 책임은 세 가지로 자체 분해된다.
+`app/tickers.py`는 W1 데이터 스파이크의 **3 격리 foundation 모듈** 중 하나다(나머지: `db.py`=BAL-8, `calendar.py`=BAL-10). 의존이 없어 BAL-8/10과 동시 착수 가능하며, W2의 consumer(`sources/kr.py`=BAL-11)가 이 모듈을 import 한다.
 
-1. `to_source` — canonical 티커를 데이터 소스별 표기로 변환 (`005930`→`005930.KS`, `BRK.B`→`BRK-B` 등). 캐시 PK는 항상 canonical이고, 변환은 **소스 호출 직전에만** 쓰인다(05 §0 "캐시 PK는 항상 canonical_ticker 기준").
-2. `CORE_ETF_WHITELIST` — G4 코어 ETF 화이트리스트(코드 상수 `frozenset`). 한도 오염 방지를 위해 광범위 지수 ETF만 포함(04 §5.2, 05 §1.1 G4 노트).
-3. `classify_category` — 보유 종목을 `'core'`/`'satellite'`/`None`(확인 필요)으로 분류(G4).
+세 가지 책임:
 
-**W1 슬라이스 내 역할/의존.**
+1. **`to_source(source, ct, market)`** — `holdings.canonical_ticker`(예 `005930`, `VOO`, `BRK.B`)를 데이터 소스가 요구하는 표기로 변환. 모든 캐시 PK는 canonical 기준이라(`05 §0`·`§14`), 소스별 표기차(`005930.KS` vs `005930`)로 시계열이 갈라지지 않게 하는 **단일 변환 지점**. W2의 `KrSource.ohlcv/fundamentals`가 `to_source('pykrx'|'fdr', ct, 'KR')`로 호출한다(`BAL-1 §2.5`).
+2. **`CORE_ETF_WHITELIST: frozenset[str]`** — G4 코어 ETF 화이트리스트(코드 상수). 광범위 지수 ETF만 `core`로 인정, 섹터·테마·레버리지·액티브 ETF는 제외해 satellite 한도 오염을 막는다(`04 §5.2`).
+3. **`classify_category(h)`** — `HoldingInput`을 받아 `core`/`satellite`/`None`을 판정. `POST /holdings` 저장 직전 1회 호출되어 결과가 `holdings.category`에 영속화된다(`04 §5.3`·`05 §1.1` G4 — 매 계산 재판정 비용 회피).
 
-- **의존: 없음**(BAL-9는 db/calendar와 파일 비중복, 충돌 0). orchestration §1 DAG 기준 BAL-8·9·10은 Wave-1에서 **진짜 3-way 병렬** 대상.
-- **소비자: BAL-11 `app/sources/kr.py`**(Wave-2). `KrSource`가 내부에서 `tickers.to_source`를 호출해 pykrx/FDR 호출용 심볼을 만든다(orchestration §2.5 "내부: tickers.to_source, calendar.expected_trade_date 사용").
-- **소비자: `POST /holdings` 저장 경로**(W1 범위 밖이지만 `classify_category`/`CORE_ETF_WHITELIST`의 최종 호출처. 04 §5.3 — 저장 직전 1회 판정 후 `holdings.category`에 영속화).
+> 현재 파일은 W0 스텁(docstring 1줄)이다: `/Users/pyeondohun/development/thinking/investbrief/app/tickers.py`.
 
-**왜 W1에서 강하게 못박나.** BAL-9는 외부 의존이 전혀 없는 순수 계산 모듈이라 단위테스트로 100% 결정적 검증이 가능하다. orchestration §3 Wave-1 게이트가 명시적으로 "tickers: to_source 변환표 테스트 green"을 산출 게이트로 요구한다(§5 DoD에도 `tests/test_tickers.py: to_source 변환표 전 케이스 통과`).
+### W1 슬라이스 내 위치 (`BAL-1 §1` DAG)
+```
+BAL-8  db.py       ─┐
+BAL-9  tickers.py  ─┼─► BAL-11 sources/kr.py ─► BAL-12 validate + 005930 E2E
+BAL-10 calendar.py ─┘
+```
 
 ---
 
 ## 2. 영향 파일
 
-| 파일 | 작업 | 내용 |
+| 파일 | 변경 | 비고 |
 |---|---|---|
-| `app/tickers.py` | **수정**(현재 W0 스텁: docstring 1줄) | `to_source`, `CORE_ETF_WHITELIST`, `classify_category` 구현 |
-| `tests/test_tickers.py` | **신규** | 변환표 파라미터라이즈드 + 화이트리스트 + 분류 우선순위 단위테스트 |
+| `/Users/pyeondohun/development/thinking/investbrief/app/tickers.py` | **구현**(W0 스텁 → 본체) | 본 이슈 핵심 산출물 |
+| `/Users/pyeondohun/development/thinking/investbrief/app/models.py` | **선행 의존** | `classify_category`가 `HoldingInput`을 받음 → `tickers.py`가 `from app.models import HoldingInput`. `models.py`는 W1 부분 기여로 `HoldingInput`(mutable) 정의 필요(`04 §4.1`, `BAL-1 §2.4`). 이미 정의돼 있지 않으면 **본 작업의 선행 조건**으로 최소 정의(아래 §3 단계 0 참조) |
+| `/Users/pyeondohun/development/thinking/investbrief/tests/test_tickers.py` | **신규** | to_source 변환표 + whitelist + classify를 못박는 테스트 |
 
-> 다른 파일은 건드리지 않는다. `app/models.py`(HoldingInput)·`app/sources/kr.py`는 BAL-9 범위가 아니다. `classify_category` 입력 타입 결정에 따른 import 영향은 §8 미해결 질문 Q2 참조.
-
----
-
-## 3. 구현 단계
-
-> 각 단계는 외부 의존이 없으므로 **편집 → `python3 -m py_compile app/tickers.py` → 해당 단위테스트 green** 루프로 검증한다(orchestration §4 degraded-session: compile-check 수동 실행).
-
-### 단계 1 — `to_source` 변환표
-
-**핵심 로직.** canonical 티커를 소스 표기로 정규화한다. 변환 규칙의 정본 케이스(04 §5.1 표 + 05 §0)는 다음과 같다.
-
-- KR 6자리 숫자 종목: 거래소 접미 부착이 필요한 소스(yf/finnhub/stooq)는 KOSPI=`​.KS`, KOSDAQ=`​.KQ`; pykrx는 6자리 **그대로**.
-- US 일반: 대부분 소스는 그대로(`VOO`→`VOO`), stooq는 소문자+`.us`(`voo.us`).
-- US 점(`.`) 포함 클래스주: yf/finnhub는 `.`→`-`(`BRK.B`→`BRK-B`), stooq는 `brk-b.us`.
-
-**검증 포인트.**
-- `to_source('005930', market='KR')`가 §2.2 케이스(`005930`→`005930.KS`)와 일치.
-- `to_source('BRK.B', market='US')`가 §2.2 케이스(`BRK.B`→`BRK-B`)와 일치.
-- ⚠️ **시그니처/표 구조 불일치(반드시 §8 Q1 확인 후 진행).** §2.2 정본 시그니처는 `to_source(canonical, market=None) -> str`로 **source 인자가 없다**. 그러나 04 §5.1의 변환표는 **소스별로 출력이 다르다**(yf `005930.KS` vs stooq `005930.KS` vs pykrx `005930`; `VOO` vs `voo.us`). 2-인자 시그니처로는 이 소스 분기를 표현할 수 없다 → 본문에서 임의로 source 인자를 추가하지 **않는다**. Q1 해소 전까지는 §2.2 시그니처(2-인자)를 정본으로 두고, 단위테스트는 §2.2가 명시한 케이스(KS 접미, BRK-B)만 못박는다(아래 §6 표의 "§2.2 확정" 행).
-
-### 단계 2 — `CORE_ETF_WHITELIST`
-
-**핵심 로직.** 04 §5.2 정본을 그대로 `frozenset[str]` 상수로 둔다(KR: `069500`, `360750`, `379800` / US: `VOO`, `SPY`, `VTI`, `IVV`, `ITOT`, `VT`). 섹터·테마·레버리지·액티브 ETF는 **포함 금지**(한도 오염 방지, 05 §1.1 G4 노트).
-
-**검증 포인트.**
-- 타입이 `frozenset`이고 불변(mutation `AttributeError`).
-- 04 §5.2의 9개 심볼이 정확히 포함, 그 외 심볼(예: `QQQ`, `SOXL`)은 미포함.
-- 멤버십 키는 canonical 표기(`VOO`, `069500`)와 일치 — `to_source` 변환 전 값으로 조회.
-
-### 단계 3 — `classify_category`
-
-**핵심 로직(우선순위, 04 §5.3 / 05 §1.1 G4 노트).**
-1. 사용자 명시 category가 있으면 그 값 우선.
-2. 개별주(stock) → `'satellite'`.
-3. ETF → canonical이 `CORE_ETF_WHITELIST`에 있으면 `'core'`, 아니면 `None`(="확인 필요").
-4. 그 외(cash 등) → `None`.
-
-**검증 포인트.**
-- 화이트리스트 ETF → `'core'`, 비화이트리스트 ETF → `None`.
-- stock → `'satellite'`.
-- ⚠️ **시그니처 불일치(§8 Q2).** §2.2 정본은 `classify_category(ticker: str, instrument: str) -> str | None`이다. 그러나 04 §5.3은 `classify_category(h: HoldingInput) -> ...`로 **사용자 명시 우선(`h.category`) 분기**를 포함한다. §2.2의 `(ticker, instrument)` 2-인자에는 사용자 override 입력 슬롯이 없다 → §2.2 시그니처를 정본으로 두면 우선순위 1(사용자 명시)을 이 함수가 직접 수행할 수 없다. 임의로 인자를 추가하거나 `HoldingInput`을 받도록 바꾸지 **않는다**. Q2 해소 전까지 §2.2 시그니처를 따르고, 우선순위 2~4(stock/ETF whitelist/그외)만 본 함수에서 구현하며 "사용자 명시 우선"은 호출측(POST /holdings) 책임으로 둔다(이 분기 위치는 Q2에서 확정).
+> `models.py` 전량(LLM/Card DTO 등)은 W3 범위다. W1은 `HoldingInput`만 필요. BAL-8(`db.py`)도 `OHLCV/Funda` 등 frozen DTO를 필요로 하므로, `models.py`는 W1에서 BAL-8·BAL-9가 함께 닿는 공유 파일이다 — **병렬 충돌 주의**(아래 §5 리스크).
 
 ---
 
-## 4. 인터페이스
+## 3. 구현 단계 (하위작업 / 자체분해 단위 · 검증 포인트)
 
-> **정본 = orchestration §2.2.** 아래는 §2.2를 그대로 옮기고 파라미터/반환/예외만 구체화한 것이다. 새 시그니처를 발명하지 않는다. §2.2와 04(§5.1/§5.3)의 불일치는 §8 미해결 질문으로 분리했다.
+### 단계 0 — `models.HoldingInput` 존재 확인 (선행)
+- `models.py`에 `HoldingInput`이 정의돼 있는지 확인. 없으면 `04 §4.1` 그대로 최소 정의(첫 필드 `instrument`, `category`는 마지막 직전, 전부 mutable `@dataclass`).
+- **검증**: `python3 -c "from app.models import HoldingInput; print(HoldingInput(instrument='etf', name='x'))"` 동작.
 
+### 단계 1 — `to_source` 구현
+- 시그니처(§4.1)대로 `source` 리터럴 분기 + `market` 분기로 변환표(§4.1 표)를 구현.
+- KR(`market=='KR'`): `yf/finnhub/stooq`는 `{ct}.KS` 접미(KOSPI 가정), `pykrx`는 `ct` 그대로(6자리).
+- US(`market=='US'`): `yf/finnhub`는 점→하이픈 정규화 후 대문자(`BRK.B`→`BRK-B`, `VOO`→`VOO`), `stooq`는 소문자 + `.us` 접미 + 점→하이픈(`VOO`→`voo.us`, `BRK.B`→`brk-b.us`).
+- `fdr`(KR)·`fmp`(US)·`dart`(KR)는 정본 표에 명시 케이스가 없으나 시그니처 리터럴에 포함됨 → **§미해결 질문 1** 참조(현재 결정: `fdr`=pykrx와 동일(6자리 그대로), `dart`=6자리, `fmp`=canonical 그대로 대문자 — 보수적 기본값).
+- **검증**: `python3 -m py_compile app/tickers.py` + 단계 1 테스트(아래 §6) green.
+
+### 단계 2 — `CORE_ETF_WHITELIST` 상수
+- `04 §5.2` 9개 티커를 `frozenset[str]`으로 정의(069500/360750/379800/VOO/SPY/VTI/IVV/ITOT/VT). 주석으로 "섹터·테마·레버리지·액티브 제외" 명시.
+- **검증**: 멤버십 테스트(`"069500" in CORE_ETF_WHITELIST`, `"TQQQ" not in ...`) green.
+
+### 단계 3 — `classify_category` 구현
+- 우선순위(§4.3): ① `h.category is not None` → 그대로 반환 ② `instrument=="stock"` → `"satellite"` ③ `instrument=="etf"` → whitelist 매칭 시 `"core"` 아니면 `None` ④ 그 외(cash 등) → `None`.
+- **검증**: 4분기 + 우선순위 충돌(사용자가 satellite ETF를 core로 명시) 테스트 green.
+
+### 단계 4 — 통합 검증
+- `pytest -q tests/test_tickers.py` green, `python3 -m py_compile app/tickers.py` 통과, black/isort/ruff clean.
+
+---
+
+## 4. 인터페이스 (확정 시그니처 구체화)
+
+### 4.1 `to_source`
 ```python
-def to_source(canonical: str, market: str | None = None) -> str:
-    """canonical 티커를 데이터 소스 표기로 변환. (orchestration §2.2 / 04 §5.1)
+from typing import Literal
 
-    예(§2.2 정본 케이스):
-      to_source('005930', 'KR') -> '005930.KS'
-      to_source('BRK.B', 'US')  -> 'BRK-B'
-    """
-
-CORE_ETF_WHITELIST: frozenset[str]
-    # G4 코어 ETF 화이트리스트 (04 §5.2 정본 9종). 광범위 지수 ETF만.
-
-def classify_category(ticker: str, instrument: str) -> str | None:
-    """보유 종목 카테고리 분류. (orchestration §2.2 / 04 §5.3)
-       반환: 'core' | 'satellite' | None('확인 필요')
-    """
+def to_source(
+    source: Literal["yf", "finnhub", "stooq", "pykrx", "fdr", "fmp", "dart"],
+    ct: str,
+    market: str,
+) -> str:
+    ...
 ```
+- **파라미터**: `source` = 데이터 소스 키(7종 리터럴). `ct` = canonical ticker(`005930`/`VOO`/`BRK.B`). `market` = `"KR"` 또는 `"US"`(현재 `str` 정본; 04/seam이 `str`로 둠 — Literal 좁히지 말 것).
+- **반환**: 소스별 표기 문자열.
+- **변환표(검증 가능 — test_tickers.py가 못박음)**:
 
-**파라미터/반환/예외 명세.**
+| canonical (market) | yf | finnhub | stooq | pykrx |
+|---|---|---|---|---|
+| `005930` (KR) | `005930.KS` | `005930.KS` | `005930.KS` | `005930` |
+| `VOO` (US) | `VOO` | `VOO` | `voo.us` | — |
+| `BRK.B` (US) | `BRK-B` | `BRK-B` | `brk-b.us` | — |
 
-| 시그니처 | 파라미터 | 반환 | 예외/엣지 |
-|---|---|---|---|
-| `to_source(canonical, market=None)` | `canonical: str`(정규 티커), `market: str \| None`(`'KR'`/`'US'`, KR 접미 분기에 필요) | `str`(소스 표기) | KR 종목인데 `market=None`이면 접미 분기 판단 불가 → Q1·Q3 참조. 본문에 임의 예외 정책 주입 금지 |
-| `CORE_ETF_WHITELIST` | — | `frozenset[str]` | 불변. 멤버십 조회는 canonical 표기 기준 |
-| `classify_category(ticker, instrument)` | `ticker: str`(canonical), `instrument: str`(`'stock'`/`'etf'`/`'cash'`) | `'core'` \| `'satellite'` \| `None` | 알 수 없는 `instrument` 처리 정책 미정 → Q4 |
+> seam v2(`BAL-1 §2.2`) 예시 `to_source('stooq','VOO','US')->'voo.us'`, `to_source('finnhub','BRK.B','US')->'BRK-B'`, `to_source('yf','005930','KR')->'005930.KS'`와 일치. (TECH-DESIGN §189의 2-arg narrative 표기는 서술용 약식 — 정본 시그니처는 04 §5.1/seam §2.2의 3-arg. 이 드리프트는 이미 해소됨.)
+- **예외/엣지**: KR은 `005930=KOSPI(.KS)`로 진행. KOSDAQ(`.KQ`) 서브마켓은 `market='KR'`만으로 구분 불가 → **W2로 유보(known limitation)**, 본 이슈에서 `.KQ` 분기 구현하지 않음. 미지원 `source`/`market` 조합 처리 정책은 **§미해결 질문 2**.
 
-> 반환 타입 표기: §2.2는 `classify_category -> str | None`, 04 §5.3은 `Literal['core','satellite'] | None`. 본 가이드는 §2.2 표기(`str | None`)를 정본으로 채택하되, 구현은 `'core'`/`'satellite'`/`None`만 반환한다(§15에 tickers DTO 정의 없음 → §2 우선).
+### 4.2 `CORE_ETF_WHITELIST`
+```python
+CORE_ETF_WHITELIST: frozenset[str] = frozenset({
+    "069500",  # KODEX 200
+    "360750",  # TIGER 미국S&P500
+    "379800",  # KODEX 미국S&P500TR
+    "VOO", "SPY", "VTI", "IVV", "ITOT", "VT",
+})
+# 섹터·테마·레버리지·액티브 ETF 포함 금지 (한도 오염 방지, 04 §5.2 / SSoT §6).
+```
+- **타입**: `frozenset[str]`(immutable 상수). canonical ticker(KR=6자리, US=심볼) 그대로.
+
+### 4.3 `classify_category`
+```python
+from app.models import HoldingInput
+
+def classify_category(h: HoldingInput) -> Literal["core", "satellite"] | None:
+    if h.category is not None:        # 1) 사용자 명시 우선
+        return h.category
+    if h.instrument == "stock":       # 2) 개별주 → satellite
+        return "satellite"
+    if h.instrument == "etf":         # 3) ETF: 화이트리스트 매칭만 core, 아니면 None(="확인 필요")
+        return "core" if h.canonical_ticker in CORE_ETF_WHITELIST else None
+    return None                       # 4) cash 등 → None
+```
+- **파라미터**: `h: HoldingInput`(`models.py §4.1`, **mutable** dataclass). 읽는 필드 = `h.category`, `h.instrument`, `h.canonical_ticker`.
+- **반환**: `"core"` | `"satellite"` | `None`(`None`="확인 필요", `holdings.category` NULL로 영속).
+- **예외**: 없음(순수 함수, 분기로 전체 입력 커버). `h.canonical_ticker is None`(cash 등 등록 ETF가 아닌 행)이어도 ① `etf` 분기는 `None in frozenset` → `False` → `None` 반환으로 안전. instrument enum 외 값은 어느 분기에도 안 걸려 `None` 반환(방어적) — **§미해결 질문 3**.
 
 ---
 
 ## 5. 엣지 & 리스크
 
-| 엣지/리스크 | 영향 | 대응 |
+| # | 엣지/리스크 | 처리 |
 |---|---|---|
-| **KOSDAQ vs KOSPI 접미 구분** (`.KQ` vs `.KS`) | 04 §5.1 노트: "KOSDAQ은 `.KQ` 접미(yf/stooq)". 6자리 숫자만으로는 시장 구분 불가 | 접미 결정 입력(시장 구분)이 §2.2 시그니처에 없음 → Q3. 본문에 임의 룩업/추론 주입 금지 |
-| **source별 출력 분기 불가** | 04 §5.1 표는 소스별로 다른 출력. §2.2는 source 인자 없음 | Q1. 단위테스트는 §2.2 확정 케이스만 강제, 소스별 케이스는 Q1 해소 후 추가 |
-| **`classify_category` 사용자 override 누락** | 04 §5.3 우선순위 1(사용자 명시)을 §2.2 시그니처가 표현 못함 | Q2. override는 호출측 책임으로 임시 분리 |
-| **빈/None canonical 입력** | `to_source('')` 또는 `classify_category(None, ...)` 동작 미정 | 입력 검증 정책 미정 → Q4. 임의 방어코드 추가 금지(§15/§2에 검증 계약 없음) |
-| **알 수 없는 instrument** | `classify_category('X','bond')` 등 | G4 분류표에 없음 → `None` 반환이 자연스럽되 명시 안 됨 → Q4 |
-| **빈 DF / 백필 / 휴장 / NULL percentile / 조정가 stale** | **BAL-9 무관**(이들은 sources/collect/metrics 레이어 — orchestration §2.5·§7, 05 §1.3/§1.8). tickers.py는 순수 문자열 변환·상수·분기로 외부 응답을 다루지 않음 | 본 모듈 책임 아님 → §7 Out of scope. (요청 항목이지만 BAL-9 범위에 해당 없음을 명시) |
+| E1 | KOSPI/KOSDAQ 구분 불가(`market='KR'`만으로 `.KS`/`.KQ` 결정 불가) | `005930=KOSPI(.KS)`로 진행. KOSDAQ 서브마켓 해소는 **W2 유보(known limitation)** — `BAL-1 §2.2` 결정 그대로 |
+| E2 | `BRK.B`류 점-포함 티커 | yf/finnhub=점→하이픈(`BRK-B`), stooq=소문자+하이픈+`.us`(`brk-b.us`). 변환표 정본 |
+| E3 | 정본 표 미명시 source(`fdr`/`fmp`/`dart`) | 보수적 기본값(§3 단계 1). 실제 적재는 W2(BAL-11) — `fdr`/`pykrx`만 KR 어댑터가 사용(`BAL-1 §2.5`). `dart`/`fmp` 미사용 케이스는 **§미해결 질문 1** |
+| E4 | satellite ETF를 사용자가 `category='core'`로 명시 | 우선순위 ①이 사용자값을 신뢰(반환 `core`) — 의도된 동작(`04 §5.3` "사용자 명시 우선") |
+| **R1** | **`models.py` 병렬 충돌**: BAL-8(db.py)도 `OHLCV/Funda` 등 DTO를 `models.py`에 추가 → 같은 파일 동시 편집 | W1 3-way 병렬에서 `models.py`만 공유. **권장**: `models.py`의 `HoldingInput`만 먼저 단독 커밋하거나, BAL-9는 `HoldingInput` 블록만 편집(다른 DTO 영역 비접촉)해 머지 충돌 최소화. `BAL-1 §2.4`가 W1 기여 DTO 목록을 명시 |
+| R2 | `from app.models import HoldingInput`가 순환 import 유발? | `models.py`는 `tickers.py`를 import 하지 않음(단방향) → 순환 없음. 안전 |
+| R3 | `market` 대소문자 변형(`'kr'`) | 정본은 `"KR"`/`"US"` 대문자 입력 가정(holdings CHECK가 `'KR','US'`만 허용, `05 §1.1`). 소문자 정규화는 범위 밖 |
 
 ---
 
-## 6. 테스트 계획
+## 6. 테스트 계획 (`tests/test_tickers.py` · pytest, 어댑터=모킹)
 
-**파일: `tests/test_tickers.py`** (신규). 외부 의존 0 → 전부 `@pytest.mark.unit`. 모킹 불필요(어댑터 없음). 기존 `tests/conftest.py`/`pytest.ini`(`markers: unit`) 그대로 사용.
+- **외부 네트워크 없음**: `tickers.py`는 순수 변환 로직이라 모킹 불필요(W1 foundation의 장점). 어댑터 모킹은 W2(BAL-11)에서 적용.
+- `pytest.mark.unit` 마커 사용(`pytest.ini`에 등록됨). black/isort/ruff 통과.
 
-### 6.1 `to_source` 변환표 (파라미터라이즈드) — DoD 핵심
+```python
+import pytest
+from app.models import HoldingInput
+from app.tickers import to_source, classify_category, CORE_ETF_WHITELIST
 
-> orchestration §5 / §3 Wave-1 게이트가 명시 요구: "to_source 변환표 전 케이스 통과".
 
-**§2.2 확정 케이스(무조건 green이어야 함):**
+# --- to_source 변환표 (못박기) ---
+@pytest.mark.unit
+@pytest.mark.parametrize("source,ct,market,expected", [
+    # KR (005930 = KOSPI .KS)
+    ("yf",      "005930", "KR", "005930.KS"),
+    ("finnhub", "005930", "KR", "005930.KS"),
+    ("stooq",   "005930", "KR", "005930.KS"),
+    ("pykrx",   "005930", "KR", "005930"),
+    # US — VOO
+    ("yf",      "VOO", "US", "VOO"),
+    ("finnhub", "VOO", "US", "VOO"),
+    ("stooq",   "VOO", "US", "voo.us"),
+    # US — BRK.B (점 포함)
+    ("finnhub", "BRK.B", "US", "BRK-B"),
+    ("yf",      "BRK.B", "US", "BRK-B"),
+    ("stooq",   "BRK.B", "US", "brk-b.us"),
+])
+def test_to_source_conversion_table(source, ct, market, expected):
+    assert to_source(source, ct, market) == expected
 
-| 입력 `(canonical, market)` | 기대 출력 | 근거 |
-|---|---|---|
-| `('005930', 'KR')` | `'005930.KS'` | §2.2 명시 케이스 |
-| `('BRK.B', 'US')` | `'BRK-B'` | §2.2 명시 케이스 |
 
-**04 §5.1 확장 케이스(Q1 해소 = source 인자 확정 후 활성화. 그 전에는 `@pytest.mark.skip(reason="Q1: source 인자 미확정")`):**
+# --- CORE_ETF_WHITELIST ---
+@pytest.mark.unit
+def test_whitelist_members():
+    assert CORE_ETF_WHITELIST == frozenset({
+        "069500", "360750", "379800", "VOO", "SPY", "VTI", "IVV", "ITOT", "VT",
+    })
 
-| canonical | market | yf | finnhub | stooq | pykrx |
-|---|---|---|---|---|---|
-| `005930` | KR | `005930.KS` | `005930.KS` | `005930.KS` | `005930` |
-| `VOO` | US | `VOO` | `VOO` | `voo.us` | — |
-| `BRK.B` | US | `BRK-B` | `BRK-B` | `brk-b.us` | — |
+@pytest.mark.unit
+def test_whitelist_excludes_sector_leverage():
+    for t in ("TQQQ", "SOXL", "ARKK", "KODEX2X"):
+        assert t not in CORE_ETF_WHITELIST
 
-테스트 함수명:
-- `test_to_source_kr_kospi_suffix` — `('005930','KR') == '005930.KS'`
-- `test_to_source_us_dot_to_dash` — `('BRK.B','US') == 'BRK-B'`
-- `test_to_source_table_per_source`(파라미터라이즈드, skip until Q1) — 04 §5.1 4-소스 표
 
-### 6.2 `CORE_ETF_WHITELIST`
+# --- classify_category 4분기 + 우선순위 ---
+def _h(**kw):
+    base = dict(instrument="etf", name="x", canonical_ticker=None, category=None)
+    base.update(kw)
+    return HoldingInput(**base)
 
-- `test_whitelist_is_frozenset` — `isinstance(CORE_ETF_WHITELIST, frozenset)`
-- `test_whitelist_contains_core_members` — 04 §5.2의 9종 전부 포함
-- `test_whitelist_excludes_non_core` — `'QQQ'`, `'SOXL'`, `'005930'`(개별주 코드 아님 확인용) 미포함
-- `test_whitelist_immutable` — `add` 호출 시 `AttributeError`
+@pytest.mark.unit
+def test_classify_user_override_wins():
+    # satellite ETF지만 사용자가 core 명시 → core
+    assert classify_category(_h(instrument="etf", canonical_ticker="TQQQ", category="core")) == "core"
 
-### 6.3 `classify_category` (우선순위)
+@pytest.mark.unit
+def test_classify_stock_is_satellite():
+    assert classify_category(_h(instrument="stock", canonical_ticker="005930")) == "satellite"
 
-- `test_classify_stock_is_satellite` — `('005930','stock') == 'satellite'`
-- `test_classify_core_etf` — `('VOO','etf') == 'core'`
-- `test_classify_unknown_etf_is_none` — `('QQQ','etf') is None`
-- `test_classify_cash_is_none` — `('','cash') is None`
-- `test_classify_user_override`(Q2 해소 후) — 사용자 명시 우선 분기 위치 확정 시 추가
+@pytest.mark.unit
+def test_classify_etf_whitelist_is_core():
+    assert classify_category(_h(instrument="etf", canonical_ticker="VOO")) == "core"
 
-### 6.4 검증 명령
+@pytest.mark.unit
+def test_classify_etf_not_whitelist_is_none():
+    assert classify_category(_h(instrument="etf", canonical_ticker="TQQQ")) is None
 
-```bash
-python3 -m py_compile app/tickers.py
-pytest tests/test_tickers.py -q -m unit
+@pytest.mark.unit
+def test_classify_cash_is_none():
+    assert classify_category(_h(instrument="cash", canonical_ticker=None)) is None
 ```
 
+> `_h` 헬퍼의 `HoldingInput(**base)` 키워드는 `04 §4.1` 필드명과 일치해야 함(`instrument`/`name`/`canonical_ticker`/`category`). 다른 필수 필드가 default 없으면 헬퍼에 추가.
+
 ---
 
-## 7. DoD (Definition of Done)
+## 7. DoD (로드맵 08 Week1 + `BAL-1 §5`)
 
-> 로드맵 08 Week1 + orchestration §5 인용. BAL-9 관련 항목만 발췌.
+`docs/BAL-1-m1a-orchestration.md §5` 인용 — 본 이슈가 닿는 항목:
+- [ ] **`tests/test_tickers.py`: to_source 변환표 전 케이스 통과** (`§5` 4번째 게이트 / `§3` W-1 게이트 "tickers: to_source 변환표 테스트 green")
+- [ ] `pytest -q` green, 편집 파일 `py_compile` 통과 (`§5` 마지막 게이트)
 
-- [ ] **(orchestration §5)** `tests/test_tickers.py`: to_source 변환표 전 케이스 통과 (§2.2 확정 케이스 = 무조건; 04 §5.1 확장 케이스 = Q1 해소 시).
-- [ ] **(orchestration §3 Wave-1 게이트)** "tickers: to_source 변환표 테스트 green".
-- [ ] **(orchestration §5)** `pytest -q` green, 편집 파일 `py_compile` 통과.
-- [ ] `to_source` 시그니처가 §2.2 정본(`to_source(canonical, market=None) -> str`)과 일치.
-- [ ] `classify_category` 시그니처가 §2.2 정본(`classify_category(ticker, instrument) -> str | None`)과 일치.
-- [ ] `CORE_ETF_WHITELIST`가 04 §5.2 정본 9종과 정확히 일치하는 `frozenset[str]`.
-- [ ] PEP8 + 타입주석 + (해당 시) frozen dataclass 스타일 준수, `print()` 미사용.
-- [ ] §8 미해결 질문이 코드 머지 전까지 해소 또는 명시적으로 deferred 처리(임의 가정 주입 0).
+본 이슈 자체 DoD:
+- [ ] `to_source` 변환표 9 케이스(KR 4 + US 5) green
+- [ ] `CORE_ETF_WHITELIST` = 정확히 9개 멤버(`04 §5.2` 정본), 섹터/레버리지 제외 검증 green
+- [ ] `classify_category` 4분기 + 우선순위 충돌 케이스 green
+- [ ] `from app.models import HoldingInput` 동작(순환 import 없음)
+- [ ] black/isort/ruff clean, 전 함수 시그니처 타입주석
 
 ---
 
 ## 8. Out of scope (W1 아님 — 끌려가지 말 것)
 
-- **US/FX/regime 어댑터의 티커 변환 케이스 실호출** — `sources/us.py`(Stooq `.us`)·`fx.py`·`regime.py`는 W2. BAL-9는 변환 **규칙**만 제공, 어댑터가 실제로 호출하는 건 W2(orchestration §6).
-- **`POST /holdings` validation·category 영속화** — `classify_category` 결과를 `holdings.category`에 저장하는 경로(04 §1.4/§5.3)는 W1 슬라이스 밖(main.py 라우트). BAL-9는 순수 분류 함수만.
-- **빈 DF/백필/휴장/NULL percentile/조정가 stale 처리** — sources(BAL-11)·collect.py(W2)·metrics(W3)·calendar(BAL-10) 책임. tickers.py는 외부 응답을 다루지 않음.
-- **`models.py` LLM/Card DTO** — W3.
-- **프론트엔드** — W5.
-- **ETF 구성종목(PDF) 변환** — `sources/etf.py`(W2 이후).
+- **KOSDAQ `.KQ` 서브마켓 분기**(W2 유보, known limitation — `BAL-1 §2.2`).
+- **`fdr`/`fmp`/`dart` 소스의 실제 변환 검증** — 본 이슈는 정본 표(yf/finnhub/stooq/pykrx) 4종만 못박는다. US 어댑터(`fmp`)·DART는 W2+.
+- **다종목 입력·실데이터 적재**(`KrSource.ohlcv` 등 = BAL-11/W2).
+- **`category`의 DB 영속화 SQL**(`POST /holdings` upsert = `04 §1.4`/`main.py`, W3+). 본 이슈는 판정 함수만 제공.
+- `models.py`의 LLM/Card DTO·FxRate(W2+), metrics·collect·frontend(W2~W5).

@@ -92,6 +92,7 @@ def expected_trade_date(market: Literal["KR","US"], today: date) -> date   # KR=
 @dataclass(frozen=True) class RegimeRow: as_of; kospi_pbr; us_cape   # upsert 매핑 as_of→trade_date, us_cape→shiller_cape
 ```
 > 🔎 **정정**: v1의 `OHLCV.ct`는 오류 → `canonical_ticker`(04 §4.2). FxRate는 W1 미사용(W2로 이동).
+> 🔎 **발견③(공유파일 — W-1 병렬 충돌)**: `models.py`는 BAL-8(OHLCV/Funda)·BAL-9(HoldingInput)·BAL-11(Headline/RegimeRow)이 함께 닿는다. 즉 W-1의 "파일 비중복"이 깨지는 유일 지점. → **W-1a로 이 5개 DTO를 먼저 단독 정의·커밋**한 뒤 W-1b 3-way 병렬(각자 `from app.models import ...`)로 충돌 제거.
 
 ### 2.5 `app/sources/kr.py` (BAL-11) — canonical 04 §4.3/§7.2 Protocol 구현
 ```python
@@ -124,7 +125,7 @@ def validate_response(rows: int, latest: str, expected: str) -> None # rows==0 �
 
 | Wave | 이슈 | 병렬성 | 산출 게이트(DoD 요약) |
 |------|------|--------|------------------------|
-| **W-1** | BAL-8 · BAL-9 · BAL-10 | ✅ 3-way 진짜 병렬(파일 비중복) | db: init_schema 후 **9테이블** 생성 + connect PRAGMA / tickers: to_source 변환표 테스트 green / calendar: 005930 expected_trade_date 정확 |
+| **W-1** | **W-1a** `models.py` W1 DTO 선정의(단독 커밋) → **W-1b** BAL-8 ∥ BAL-9 ∥ BAL-10 | W-1a 직렬 → W-1b 3-way 병렬 | W-1a: HoldingInput/OHLCV/Funda/Headline/RegimeRow import 가능 / db: init_schema 후 **9테이블** + connect PRAGMA / tickers: to_source 변환표 테스트 green / calendar: 005930 expected_trade_date 정확 |
 | **W-2** | **W-2a** `sources/__init__.py` 가드(retry·validate_response·EmptyResponseError) **먼저** → **W-2b** BAL-11 `kr.py`(+Tier-2: ohlcv∥funda∥headlines) + `regime.py` KR | W-2a 직렬 → W-2b Tier-2 병렬 | 가드 import 가능 / `KrSource().ohlcv('005930')` close_raw·52주·sma200 실수치 / fundamentals PER·PBR·per_pctile_5y / headlines / `RegimeProvider().regime()` kospi_pbr |
 | **W-3** | BAL-12 | ❌ 순차 | 빈응답→EmptyResponseError 동작 테스트 / 005930 fetch→upsert→latest_* row / `tests/test_tickers.py` green |
 

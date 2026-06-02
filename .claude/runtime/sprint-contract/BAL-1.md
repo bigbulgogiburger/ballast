@@ -10,6 +10,7 @@
 
 ### Wave W-1 — foundation (BAL-8 ∥ BAL-9 ∥ BAL-10)
 **DoD**
+- **W-1a 먼저(공유파일 충돌 제거)**: `app/models.py`에 W1 DTO 5종(HoldingInput mutable + OHLCV/Funda/Headline/RegimeRow frozen, 첫필드 `canonical_ticker`) 단독 정의·커밋 → 이후 BAL-8/9/11이 import만.
 - BAL-8: `connect()` PRAGMA(FK/WAL/busy_timeout) 적용 + `init_schema()`가 05 §1 **9테이블** + 인덱스 ②④ + `ux_holdings_user_ct` 생성 + settings §15.5 seed(`dataclasses.asdict(SETTINGS_DEFAULTS)`, `str()` 변환, ON CONFLICT DO NOTHING). `latest_price/funda/fx` + 최소 `upsert_*`(frozen dataclass 인자) 동작.
 - BAL-9: `to_source(source, ct, market)` 변환표(canonical 04 §5.1), `CORE_ETF_WHITELIST` frozenset, `classify_category(HoldingInput)`.
 - BAL-10: `is_trading_day(market,d)/prev_trading_day(market,d)/expected_trade_date(market,today)` (XKRX/XNYS, US=직전거래일). ⚠️ 인자순서 `(market, d)`.
