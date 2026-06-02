@@ -1,0 +1,26 @@
+{
+  "_generated_at": "2026-06-02T09:34:58+09:00",
+  "_generator": "/harness-setup full",
+  "_stack": "python-fastapi",
+  "_prefix": "bal",
+  "_mode": "auto",
+  "created_files": [
+    ".gitattributes",
+    ".claude/settings.local.json",
+    ".claude/hooks/harness-context-inject.sh",
+    ".claude/hooks/compile-check.sh",
+    ".claude/hooks/review-gate.sh",
+    ".claude/hooks/persist-checkpoint.sh",
+    ".claude/agents/bal-explorer.md",
+    ".claude/agents/bal-security-reviewer.md",
+    ".claude/agents/bal-test-writer.md",
+    ".claude/agents/bal-build-resolver.md",
+    "CLAUDE.md",
+    ".claude/runtime/harness-metrics/aggregate.py",
+    ".claude/runtime/harness-metrics/aggregate.sh",
+    ".claude/runtime/harness-metrics/scorecard.md",
+    ".claude/runtime/harness-setup-manifest.json"
+  ],
+  "modified_files": [],
+  "skipped_files": []
+}

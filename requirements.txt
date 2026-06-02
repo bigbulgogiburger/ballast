@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+jinja2
+pykrx
+finance-datareader
+opendartreader
+pandas-datareader
+yfinance
+pandas-market-calendars
+python-dotenv
+pytest
+httpx
