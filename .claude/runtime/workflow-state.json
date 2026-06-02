@@ -1,0 +1,43 @@
+{
+  "epic": "BAL-1",
+  "epic_summary": "[W1] M1a 데이터 스파이크 — 삼성전자 무료데이터 인입 증명",
+  "parents": ["BAL-8", "BAL-9", "BAL-10", "BAL-11", "BAL-12"],
+  "mode": "wave-3-1-1",
+  "mode_note": "parallel-fanout(Tier-1 worktree×N) 대신 의존 DAG 기반 wave. 결합 슬라이스라 5-way fanout은 과설계로 판단 — docs/BAL-1-m1a-orchestration.md §0.",
+  "stage": "planned",
+  "branch": "feat/bal-1-m1a-spike",
+  "base_commit": "7a0a815",
+  "harness_mode": "auto",
+  "session_note": "현재 세션은 thinking/ 루트(degraded) — investbrief hook/bal-* 에이전트 미로드. 오케스트레이터가 수동 대체(orchestration §4).",
+  "subtasks_mode": true,
+  "subtasks": { "BAL-8": ["BAL-43", "BAL-44"], "BAL-11": ["BAL-46", "BAL-47", "BAL-48"] },
+  "skipped": ["BAL-45 (BAL-44 중복 — Jira UI 수동 삭제 필요)"],
+  "dag": {
+    "BAL-8": [], "BAL-9": [], "BAL-10": [],
+    "BAL-11": ["BAL-8", "BAL-9", "BAL-10"],
+    "BAL-12": ["BAL-8", "BAL-9", "BAL-10", "BAL-11"]
+  },
+  "waves": [
+    { "id": "W-1", "issues": ["BAL-8", "BAL-9", "BAL-10"], "parallel": true, "status": "planned" },
+    { "id": "W-2", "issues": ["BAL-11"], "tier2": ["BAL-46", "BAL-47", "BAL-48"], "status": "pending" },
+    { "id": "W-3", "issues": ["BAL-12"], "status": "pending" }
+  ],
+  "slice_status": {
+    "BAL-8": "planning", "BAL-9": "planning", "BAL-10": "planning",
+    "BAL-11": "planning", "BAL-12": "planning"
+  },
+  "artifacts": {
+    "orchestration_doc": "docs/BAL-1-m1a-orchestration.md",
+    "dev_guides": {
+      "BAL-8": "docs/BAL-8-dev-guide.md", "BAL-9": "docs/BAL-9-dev-guide.md",
+      "BAL-10": "docs/BAL-10-dev-guide.md", "BAL-11": "docs/BAL-11-dev-guide.md",
+      "BAL-12": "docs/BAL-12-dev-guide.md"
+    },
+    "sprint_contract": ".claude/runtime/sprint-contract/BAL-1.md"
+  },
+  "history": [
+    { "ts": "2026-06-02", "event": "Phase1 start: epic BAL-1 + BAL-8~12 → In Progress, branch feat/bal-1-m1a-spike off 7a0a815" },
+    { "ts": "2026-06-02", "event": "Phase3 plan: orchestration doc + seam contract written; dev-guide fan-out (workflow wf_9bfda1f9-6d1)" },
+    { "ts": "2026-06-02", "event": "dev-guide 5종 작성 완료(docs/BAL-{8..12}-dev-guide.md). verify가 seam v1 드리프트 적발 → orchestration §2를 canonical(04/§15)로 v2 정정. 9테이블 정정. W-2a 공통가드(validate/retry) 선행 의존 반영. regime KR→regime.py." }
+  ]
+}
