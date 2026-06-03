@@ -1,39 +1,42 @@
-# Aggregate Verdict — BAL-1 W-2 (BAL-11) Phase W-2 (Iteration 1)
+# Aggregate Verdict — BAL-1 W-3 (BAL-12) Phase W-3 (Iteration 1)
 
 <!-- ═══ Metadata (Tier 3 측정) ═══ -->
-- **Issue**: BAL-11 (subtasks BAL-46/47/48) + W-2a 공통가드
-- **Phase**: W-2 (sources/__init__ 가드 → kr.py + regime.py)
+- **Issue**: BAL-12 (통합 증명 — W1 슬라이스 integration tracer)
+- **Phase**: W-3 (validate 가드 동작 + 005930 E2E + test_tickers)
 - **Verdict**: PASS
 - **Iteration**: 1/3
-- **Ran At**: 2026-06-03T13:40:00+09:00 (approx)
-- **Ended At**: 2026-06-03T13:46:00+09:00 (approx)
-- **Duration**: ~6m (fan-out + 갭 수정)
-- **Tokens (approx)**: ~49k (bal-security ~18k + bal-test ~31k)
+- **Ran At**: 2026-06-03T13:52:00+09:00 (approx)
+- **Ended At**: 2026-06-03T13:56:00+09:00 (approx)
+- **Duration**: ~4m
+- **Tokens (approx)**: ~25k (bal-test-writer)
 - **Mode**: auto
 - **Shadow Run**: N
-- **Participants**: [bal-security-reviewer, bal-test-writer]
-- **Skipped**: [bal-explorer, bal-build-resolver (빌드 정상)]
-- **Target Commits**: 4624a62..cc9a64e (W-2a guard + kr.py + regime.py) + 후속 갭 테스트
+- **Participants**: [bal-test-writer]
+- **Skipped**: [bal-security-reviewer (W-3=신규 소스 없음, 테스트 전용), bal-build-resolver]
+- **Target Commits**: test_e2e_005930.py (+ E2E 필드 보강)
 
 <!-- ═══ Body ═══ -->
 ## Blockers
-초기 fan-out Blocker 2건(테스트) → **iteration 1 내 해소(71→79 passed)**.
-
-| ID | Agent | 위치 | 요지 | 상태 |
-|---|------|------|------|------|
-| G-01 | bal-test-writer | sources/__init__.py | retry() 직접 단위테스트 없음(eventual-success/exhaustion-reraise) | ✅ test_guard.py 추가 |
-| G-02 | bal-test-writer | sources/__init__.py | validate_response() 직접 테스트 없음(rows==0 raise / rows>0 pass / W1 날짜무시) | ✅ test_guard.py 추가 |
+**없음.** BAL-12 §7 DoD 자동화 항목(가드 동작·to_source 표·005930 E2E) 전건 테스트 존재.
 
 ## Advisories
 | ID | Agent | 요지 | 처리 |
 |---|------|------|------|
-| S-1 | bal-security-reviewer | config.py 필수 키 `.get()`→None silent | **이월(W-2 범위 밖, config.py=baseline)**. kr.headlines가 런타임 fail-fast(KeyError)로 보완. W-2+ 하드닝: `os.environ[...]` 전환 |
-| S-4 | bal-security-reviewer | headline title HTML unescape 후 LLM 프롬프트/템플릿 삽입 시 XSS·프롬프트인젝션 | **W-3 경계 이슈로 기록**. 프롬프트 조립(W3+)에서 'untrusted news' 구분자 격리 + Jinja2 autoescape 필수 |
-| S-2/S-3 | bal-security-reviewer | retry 광범위 Exception / EmptyResponseError 메시지에 ticker | 스파이크 허용 수준. W2 구조화 로깅 검토 |
-| G-04~G-07 | bal-test-writer | week52 adj 계열·sma200 경계200·div 0·fundamentals empty | ✅ 핵심(empty→raise, sma200=200 경계) 추가, 나머지 advisory |
+| G-1 | bal-test-writer | E2E trade_date 왕복 미단언 | ✅ 추가 |
+| G-2 | bal-test-writer | close_adj/ccy 왕복 미단언(컬럼매핑 조기검출) | ✅ 추가 |
+| G-3 | bal-test-writer | pbr/div_yield/pbr_pctile_5y 왕복 미단언 | ✅ 추가 |
+
+## W1 슬라이스 통합 DoD (orchestration §5)
+- [x] KrSource().ohlcv('005930') close_raw·52주·sma200 실수치 (단위테스트 test_kr.py로 증명; 실 네트워크 스모크는 수동·키 필요)
+- [x] fundamentals PER·PBR·per_pctile_5y (test_kr.py)
+- [x] db.upsert_* → latest_price(conn,'005930') row 반환 (test_e2e_005930.py)
+- [x] tests/test_tickers.py to_source 변환표 green
+- [x] validate_response 빈응답 → EmptyResponseError (test_guard.py)
+- [x] pytest -q green (81 passed), 편집 파일 py_compile 통과
 
 ## Next Action
-→ **PASS: W-3 진입 가능** (BAL-12: validate 동작테스트 + 005930 E2E + test_tickers). 커밋 게이트 통과.
+→ **PASS: Phase 6(최종 검증·게이트) 진입.** 전 5이슈(BAL-8/9/10/11/12) 구현+리뷰 완료.
+→ ⚠️ Phase 7(jira-complete) 제약: git remote 없음(push 불가) + base=master(main 아님). Jira 전이는 사용자 확인 필요.
 
 <!-- ═══ Post-merge Scoring (7일+ 경과 후 /harness-score로 채움) ═══ -->
 ## Post-merge Scoring
