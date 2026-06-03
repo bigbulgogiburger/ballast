@@ -110,6 +110,57 @@ def test_collect_market_stale_date_fails_ticker(conn, trading, monkeypatch):
     assert cr["status"] == "FAIL" and cr["n_fail"] == 1  # 날짜검사 인라인(decisions §3.4)
 
 
+@pytest.mark.unit
+def test_collect_market_all_fail(conn, trading, monkeypatch):
+    monkeypatch.setattr(collect.UsSource, "ohlcv",
+                        lambda self, ct: (_ for _ in ()).throw(RuntimeError("net")))
+    collect._collect_market("US", [{"market": "US", "canonical_ticker": "AAPL", "name": "Apple"}],
+                            _TODAY, "daily", conn)
+    cr = conn.execute("SELECT status, n_ok, n_fail FROM collect_run WHERE market='US'").fetchone()
+    assert cr["status"] == "FAIL" and cr["n_ok"] == 0 and cr["n_fail"] == 1
+
+
+@pytest.mark.unit
+def test_collect_market_backfill_status(conn, trading, monkeypatch):
+    monkeypatch.setattr(collect.UsSource, "ohlcv", lambda self, ct: _ohlcv(ct))
+    monkeypatch.setattr(collect.UsSource, "fundamentals", lambda self, ct: _funda(ct))
+    monkeypatch.setattr(collect.UsSource, "headlines", lambda self, ct, name: [])
+    collect._collect_market("US", [{"market": "US", "canonical_ticker": "AAPL", "name": "Apple"}],
+                            _TODAY, "backfill", conn)
+    assert conn.execute("SELECT status FROM collect_run WHERE market='US'").fetchone()["status"] == "BACKFILL"
+
+
+@pytest.mark.unit
+def test_collect_market_news_uses_ohlcv_trade_date(conn, trading, monkeypatch):
+    monkeypatch.setattr(collect.UsSource, "ohlcv", lambda self, ct: _ohlcv(ct, td=_EXP_ISO))
+    monkeypatch.setattr(collect.UsSource, "fundamentals", lambda self, ct: _funda(ct))
+    monkeypatch.setattr(collect.UsSource, "headlines", lambda self, ct, name: [
+        Headline(title="t", url="http://u", source="finnhub")])
+    collect._collect_market("US", [{"market": "US", "canonical_ticker": "AAPL", "name": "Apple"}],
+                            _TODAY, "daily", conn)
+    row = conn.execute("SELECT trade_date FROM news_snapshot WHERE canonical_ticker='AAPL'").fetchone()
+    assert row["trade_date"] == _EXP_ISO  # today가 아니라 ohlcv.trade_date
+
+
+@pytest.mark.unit
+def test_collect_market_isolation_continues(conn, trading, monkeypatch):
+    def ohlcv(self, ct):
+        if ct == "BADCO":
+            raise RuntimeError("mid-loop")
+        return _ohlcv(ct)
+    monkeypatch.setattr(collect.UsSource, "ohlcv", ohlcv)
+    monkeypatch.setattr(collect.UsSource, "fundamentals", lambda self, ct: _funda(ct))
+    monkeypatch.setattr(collect.UsSource, "headlines", lambda self, ct, name: [])
+    holdings = [{"market": "US", "canonical_ticker": "AAPL", "name": "Apple"},
+                {"market": "US", "canonical_ticker": "BADCO", "name": "Bad"},
+                {"market": "US", "canonical_ticker": "MSFT", "name": "Microsoft"}]
+    collect._collect_market("US", holdings, _TODAY, "daily", conn)
+    cr = conn.execute("SELECT n_ok, n_fail FROM collect_run WHERE market='US'").fetchone()
+    assert cr["n_ok"] == 2 and cr["n_fail"] == 1
+    got = {r[0] for r in conn.execute("SELECT canonical_ticker FROM price_snapshot")}
+    assert "MSFT" in got  # 2번째 실패 후에도 3번째 수집됨(04:557 격리 연속성)
+
+
 # ── _collect_fx ──
 @pytest.mark.unit
 def test_collect_fx_ok(conn, monkeypatch):

@@ -159,7 +159,9 @@ class UsSource:
             _FMP_RATIOS_URL.format(sym=sym),
             params={"period": "annual", "limit": 5, "apikey": key}, timeout=10,
         )
-        r.raise_for_status()
+        # raise_for_status()는 예외 메시지에 apikey 포함 URL을 노출(S-1) → status만 담아 재포장.
+        if r.status_code != 200:
+            raise RuntimeError(f"FMP HTTP {r.status_code} for {ct}")
         data = r.json()
         return data if isinstance(data, list) else []
 
