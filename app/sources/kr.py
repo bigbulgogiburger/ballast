@@ -17,7 +17,7 @@ from pykrx import stock
 from app import config
 from app.calendar import expected_trade_date
 from app.models import Funda, Headline, OHLCV
-from app.sources import EmptyResponseError, retry, validate_response
+from app.sources import retry, validate_response
 from app.tickers import to_source
 
 log = logging.getLogger(__name__)
