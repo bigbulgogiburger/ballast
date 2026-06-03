@@ -39,11 +39,24 @@ def test_to_source_unknown_market_raises():
 
 
 @pytest.mark.unit
-def test_to_source_impossible_combo_raises():
+@pytest.mark.parametrize(
+    "source,ct,market",
+    [
+        ("pykrx", "VOO", "US"),   # pykrx는 KR 전용
+        ("fdr", "VOO", "US"),     # fdr는 KR 전용
+        ("dart", "VOO", "US"),    # dart는 KR 전용
+        ("fmp", "005930", "KR"),  # fmp는 US 전용
+    ],
+)
+def test_to_source_impossible_combo_raises(source, ct, market):
     with pytest.raises(ValueError):
-        to_source("pykrx", "VOO", "US")   # pykrx는 KR 전용
+        to_source(source, ct, market)
+
+
+@pytest.mark.unit
+def test_to_source_unknown_source_raises():
     with pytest.raises(ValueError):
-        to_source("fmp", "005930", "KR")  # fmp는 US 전용
+        to_source("bloomfield", "VOO", "US")  # 미등록 source
 
 
 @pytest.mark.unit
@@ -69,6 +82,12 @@ def test_classify_etf_whitelist_core():
 def test_classify_etf_non_whitelist_none():
     h = HoldingInput(instrument="etf", name="ARKK", canonical_ticker="ARKK")
     assert classify_category(h) is None
+
+
+@pytest.mark.unit
+def test_classify_etf_none_ticker_is_none():
+    h = HoldingInput(instrument="etf", name="x", canonical_ticker=None)
+    assert classify_category(h) is None  # None in frozenset → False → None (decisions Q3)
 
 
 @pytest.mark.unit

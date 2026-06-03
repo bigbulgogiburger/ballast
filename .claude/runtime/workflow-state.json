@@ -4,7 +4,11 @@
   "parents": ["BAL-8", "BAL-9", "BAL-10", "BAL-11", "BAL-12"],
   "mode": "wave-3-1-1",
   "mode_note": "parallel-fanout(Tier-1 worktree×N) 대신 의존 DAG 기반 wave. 결합 슬라이스라 5-way fanout은 과설계로 판단 — docs/BAL-1-m1a-orchestration.md §0.",
-  "stage": "planned",
+  "stage": "reviewing-phase-W-1",
+  "aggregate_verdict": "PASS",
+  "iteration": 1,
+  "verdict_file": ".claude/runtime/aggregate-verdict.md",
+  "reviewed_at": "2026-06-03T13:29:56+09:00",
   "branch": "feat/bal-1-m1a-spike",
   "base_commit": "7a0a815",
   "harness_mode": "auto",
@@ -18,13 +22,13 @@
     "BAL-12": ["BAL-8", "BAL-9", "BAL-10", "BAL-11"]
   },
   "waves": [
-    { "id": "W-1", "prestep": "W-1a: models.py W1 DTO 5종 단독 커밋(공유파일 충돌 제거)", "issues": ["BAL-8", "BAL-9", "BAL-10"], "parallel": "W-1b 3-way (W-1a 후)", "status": "planned" },
+    { "id": "W-1", "prestep": "W-1a: models.py W1 DTO 5종 단독 커밋(공유파일 충돌 제거)", "issues": ["BAL-8", "BAL-9", "BAL-10"], "parallel": "W-1b 3-way (W-1a 후)", "status": "review-pass" },
     { "id": "W-2", "issues": ["BAL-11"], "tier2": ["BAL-46", "BAL-47", "BAL-48"], "status": "pending" },
     { "id": "W-3", "issues": ["BAL-12"], "status": "pending" }
   ],
   "slice_status": {
-    "BAL-8": "planning", "BAL-9": "planning", "BAL-10": "planning",
-    "BAL-11": "planning", "BAL-12": "planning"
+    "BAL-8": "review-pass", "BAL-9": "review-pass", "BAL-10": "review-pass",
+    "BAL-11": "pending", "BAL-12": "pending"
   },
   "artifacts": {
     "orchestration_doc": "docs/BAL-1-m1a-orchestration.md",
@@ -42,6 +46,7 @@
     { "ts": "2026-06-02", "event": "Phase3 plan: orchestration doc + seam contract written; dev-guide fan-out (workflow wf_9bfda1f9-6d1)" },
     { "ts": "2026-06-02", "event": "dev-guide 5종 작성 완료(docs/BAL-{8..12}-dev-guide.md). verify가 seam v1 드리프트 적발 → orchestration §2를 canonical(04/§15)로 v2 정정. 9테이블 정정. W-2a 공통가드(validate/retry) 선행 의존 반영. regime KR→regime.py." },
     { "ts": "2026-06-02", "event": "BAL-9/10/11/12 dev-guide canonical 시그니처로 재생성(wf_83428d92-2a0, 전건 verify OK). models.py가 BAL-8/9/11 공유파일 → W-1a 선행 단독커밋 prestep 추가. BAL-1 에픽에 계획 댓글." },
-    { "ts": "2026-06-02", "event": "미해결 질문 전건 해소(wf_f1b7ac17-475): docs/BAL-1-m1a-decisions.md(유보 0건, needs_user 0건). 교차충돌 4건 단일화(connect 인자형/upsert 전체명 bind/KOSDAQ→W2/OHLCV week52·sma200 float|None). orchestration §2 반영, dev-guide 5종에 해소 포인터." }
+    { "ts": "2026-06-02", "event": "미해결 질문 전건 해소(wf_f1b7ac17-475): docs/BAL-1-m1a-decisions.md(유보 0건, needs_user 0건). 교차충돌 4건 단일화(connect 인자형/upsert 전체명 bind/KOSDAQ→W2/OHLCV week52·sma200 float|None). orchestration §2 반영, dev-guide 5종에 해소 포인터." },
+    { "ts": "2026-06-03", "event": "W-1a 커밋(models.py 5 DTO, 1ccd17f). W-1b 3-way 구현+커밋: BAL-8 db.py(7487fd0)/BAL-9 tickers.py(d2a0003)/BAL-10 calendar.py(1d23c71). harness-review fan-out(bal-security/bal-test) → 테스트갭 Blocker 4건 iteration1 내 해소(45→59 passed). verdict=PASS. S-01(config 키 fast-fail)은 W-2 이월." }
   ]
 }

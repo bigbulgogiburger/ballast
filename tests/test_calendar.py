@@ -27,6 +27,12 @@ def test_is_trading_day_false(monkeypatch):
 
 
 @pytest.mark.unit
+def test_is_trading_day_us_weekday(monkeypatch):
+    monkeypatch.setattr(cal._US, "valid_days", lambda start_date, end_date: _sessions("2024-03-15"))
+    assert cal.is_trading_day("US", date(2024, 3, 15)) is True
+
+
+@pytest.mark.unit
 def test_prev_trading_day_returns_last(monkeypatch):
     monkeypatch.setattr(
         cal._US, "valid_days",
@@ -83,3 +89,6 @@ def test_valid_days_label_uses_date_not_tz_shift(monkeypatch):
 def test_real_calendar_expected_trade_date():
     assert cal.expected_trade_date("KR", date(2024, 1, 2)) == date(2024, 1, 2)
     assert cal.expected_trade_date("US", date(2024, 1, 2)) == date(2023, 12, 29)
+    # KR 신정(2024-01-01)은 휴장 → 직전 거래일(2023-12-28; 12-29는 연말 휴장)
+    assert cal.expected_trade_date("KR", date(2024, 1, 1)) != date(2024, 1, 1)
+    assert not cal.is_trading_day("KR", date(2024, 1, 1))
