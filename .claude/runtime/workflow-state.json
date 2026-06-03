@@ -1,23 +1,41 @@
 {
   "epic": "BAL-2",
   "epic_summary": "[W2] M1 데이터 레이어 완성 — KR+US+FX+레짐 30종목",
-  "parents": ["BAL-13", "BAL-14", "BAL-15", "BAL-16", "BAL-17"],
+  "parents": [
+    "BAL-13",
+    "BAL-14",
+    "BAL-15",
+    "BAL-16",
+    "BAL-17"
+  ],
   "mode": "wave",
   "mode_note": "다중 부모(5)지만 단일 에픽(BAL-2) 수직 슬라이스 → parallel-fanout 대신 의존 DAG wave (BAL-1 선례 + memory bal-repo-jira-facts). 공유파일(regime.py/models.py/db.py) + collect.py 통합자 의존 때문.",
-  "stage": "plan-supplement",
+  "stage": "reviewing-phase-W2-2",
   "total_phases": 3,
   "dev_guide_path": "docs/BAL-{13..17}-dev-guide.md",
   "sprint_contract_path": ".claude/runtime/sprint-contract/BAL-2.md",
   "orchestration_doc": "docs/BAL-2-w2-orchestration.md",
   "decisions": "docs/BAL-2-w2-decisions.md",
-  "plan_verdict": "REVISE→대부분 decisions/by-design 해소, 잔여 needs_user 2건(U1/U6)",
+  "plan_verdict": "REVISE→대부분 decisions/by-design 해소",
+  "user_decisions": {
+    "U1": "옵션 A — BAL-16 R2 연기, etf.py stub 유지(W2-2는 3-way: BAL-13/14/15)",
+    "U6": "(a) db헬퍼 W2-1 선커밋"
+  },
+  "approval": "승인 — 전체 자율 실행",
   "branch": "feat/bal-2-w2-data-layer",
   "base_commit": "b880169",
   "harness_mode": "auto",
   "subtasks_mode": true,
   "subtasks": {
-    "BAL-13": ["BAL-49", "BAL-50"],
-    "BAL-17": ["BAL-51", "BAL-52", "BAL-53"]
+    "BAL-13": [
+      "BAL-49",
+      "BAL-50"
+    ],
+    "BAL-17": [
+      "BAL-51",
+      "BAL-52",
+      "BAL-53"
+    ]
   },
   "modules": {
     "BAL-13": "app/sources/us.py",
@@ -27,14 +45,33 @@
     "BAL-17": "app/collect.py"
   },
   "dag": {
-    "BAL-13": [], "BAL-14": [], "BAL-15": [], "BAL-16": [],
-    "BAL-17": ["BAL-13", "BAL-14", "BAL-15", "BAL-16"]
+    "BAL-13": [],
+    "BAL-14": [],
+    "BAL-15": [],
+    "BAL-16": [],
+    "BAL-17": [
+      "BAL-13",
+      "BAL-14",
+      "BAL-15",
+      "BAL-16"
+    ]
   },
   "slice_status": {
-    "BAL-13": "planning", "BAL-14": "planning", "BAL-15": "planning",
-    "BAL-16": "planning", "BAL-17": "planning"
+    "BAL-13": "review-pass",
+    "BAL-14": "review-pass",
+    "BAL-15": "review-pass",
+    "BAL-16": "deferred-R2(U1=A)",
+    "BAL-17": "pending"
   },
   "history": [
-    { "ts": "2026-06-03", "event": "Phase1 start: epic BAL-2 + BAL-13~17 + 하위 BAL-49/50/51/52/53 → In Progress, branch feat/bal-2-w2-data-layer off b880169(main)" }
-  ]
+    {
+      "ts": "2026-06-03",
+      "event": "Phase1 start: epic BAL-2 + BAL-13~17 + 하위 BAL-49/50/51/52/53 → In Progress, branch feat/bal-2-w2-data-layer off b880169(main)"
+    },
+    {
+      "ts": "2026-06-03",
+      "event": "W2-1 FxRate+db헬퍼(24b5c27). W2-2 어댑터 us/fx/regime(adf865f/7a37409/0a5813f) + 리뷰 fix(77d608e). harness-review PASS(S-2 path traversal·테스트갭 iteration1 해소, 117 passed). BAL-16=R2 연기."
+    }
+  ],
+  "aggregate_verdict": "PASS"
 }
