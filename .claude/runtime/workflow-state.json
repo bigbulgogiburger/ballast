@@ -10,7 +10,7 @@
   ],
   "mode": "wave",
   "mode_note": "다중 부모(5)지만 단일 에픽(BAL-2) 수직 슬라이스 → parallel-fanout 대신 의존 DAG wave (BAL-1 선례 + memory bal-repo-jira-facts). 공유파일(regime.py/models.py/db.py) + collect.py 통합자 의존 때문.",
-  "stage": "reviewing-phase-W2-2",
+  "stage": "implemented-all-waves-ready-for-completion",
   "total_phases": 3,
   "dev_guide_path": "docs/BAL-{13..17}-dev-guide.md",
   "sprint_contract_path": ".claude/runtime/sprint-contract/BAL-2.md",
@@ -61,7 +61,7 @@
     "BAL-14": "review-pass",
     "BAL-15": "review-pass",
     "BAL-16": "deferred-R2(U1=A)",
-    "BAL-17": "pending"
+    "BAL-17": "review-pass"
   },
   "history": [
     {
@@ -71,6 +71,10 @@
     {
       "ts": "2026-06-03",
       "event": "W2-1 FxRate+db헬퍼(24b5c27). W2-2 어댑터 us/fx/regime(adf865f/7a37409/0a5813f) + 리뷰 fix(77d608e). harness-review PASS(S-2 path traversal·테스트갭 iteration1 해소, 117 passed). BAL-16=R2 연기."
+    },
+    {
+      "ts": "2026-06-03",
+      "event": "W2-3 collect.py(3769a7f)+리뷰fix(c32cd41). harness-review PASS(S-1 FMP 키 로그유출 어댑터 마스킹·collect 테스트갭). 138 passed. 전 wave PASS → Phase6/7."
     }
   ],
   "aggregate_verdict": "PASS"

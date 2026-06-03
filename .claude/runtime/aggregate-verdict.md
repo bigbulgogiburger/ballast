@@ -1,30 +1,30 @@
-# Aggregate Verdict — BAL-2 W2-2 (BAL-13/14/15) Phase W2-2 (Iteration 1)
+# Aggregate Verdict — BAL-2 W2 (BAL-13~17) — 전 wave 종합
 
-- **Issue**: BAL-13(us) / BAL-14(fx) / BAL-15(regime us_cape). BAL-16=R2 연기(U1=A).
-- **Phase**: W2-2 (어댑터 3-way)
+- **Epic**: BAL-2 [W2] M1 데이터 레이어 완성
 - **Verdict**: PASS
-- **Iteration**: 1/3
-- **Mode**: auto · **Participants**: [bal-security-reviewer, bal-test-writer]
-- **Target Commits**: adf865f..0a5813f + 77d608e(fix)
+- **Mode**: auto · **Participants**: bal-security-reviewer, bal-test-writer (wave별 fan-out)
+- **Branch**: feat/bal-2-w2-data-layer (base b880169=main)
 
-## Blockers (iteration 1 내 해소)
-| ID | Agent | 요지 | 상태 |
-|---|------|------|------|
-| S-2 | security | FMP URL path traversal(ct 미인코딩) | ✅ urllib.parse.quote |
-| G1/G2 | test | finnhub trade_date(ts/fallback) 미검증 | ✅ 추가 |
-| G3 | test | 소표본 pctile None 미검증 | ✅ 추가 |
-| G4 | test | FMP 빈→EmptyResponseError 미검증 | ✅ 추가 |
-| G5/G6 | test | ECB 합성식 한번도 실행 안됨(전량 모킹) | ✅ _ecb_rate 모킹 수학검증 추가 |
+## Wave별 게이트
+| Wave | 이슈 | Verdict | 비고 |
+|---|---|---|---|
+| W2-1 | FxRate + db 헬퍼 | PASS | 라운드트립 11 테스트 |
+| W2-2 | BAL-13/14/15 어댑터 | PASS (iter1) | S-2 path traversal·S-1 Finnhub헤더·S-3 https + 테스트갭 해소 |
+| W2-3 | BAL-17 collect | PASS (iter1) | S-1 FMP 키 로그유출 차단(어댑터 마스킹) + collect 테스트갭 해소 |
 
-## Advisories (이월/처리)
-| ID | 요지 | 처리 |
-|---|------|------|
-| S-1 | FMP/Finnhub 키 query param 노출 | Finnhub 헤더 전환(완화). FMP는 apikey 헤더 미지원(제공자 제약)→query 유지, 로그 URL 주의 이월 |
-| S-3 | Yale CAPE http | ✅ https 전환 |
-| S-4 | headline→LLM/템플릿 인젝션 | W3 프롬프트 격리 과제(W1부터 이월) |
-| S-5 | config os.environ[] fast-fail | W2+ 하드닝 이월 |
-| S-6 | fx 광범위 except가 auth 마스킹 | ECB 키리스라 저영향, 이월 |
-| G7/G8 | ECOS skip·us_cape both-fail | ✅ both-fail 추가(G7 간접 커버) |
+## 해소된 Blocker 요약
+- 보안: S-2(FMP URL traversal→quote), S-1(키 노출: Finnhub 헤더 전환 + FMP HTTPError 마스킹), S-3(Yale https)
+- 테스트: finnhub trade_date, 소표본 pctile, FMP 빈→raise, ECB 합성 수학, us_cape both-fail, collect all-fail/backfill/news-date/격리연속성
 
-## Next Action
-→ PASS: W2-3(BAL-17 collect.py 통합) 진입. 117 passed, ruff 통과.
+## 이월 Advisory (W2+/W3)
+- FMP apikey query param(제공자 제약 — 헤더 미지원, 로그 마스킹으로 완화)
+- S-4 headline→LLM/템플릿 인젝션 격리 (W3 프롬프트 조립)
+- S-5 config os.environ[] fast-fail (W2+ 하드닝)
+- 미설치 lib(pandas_datareader/openpyxl/xlrd) — 실 네트워크 스모크 시 설치 필요(테스트는 모킹)
+- EDGAR report_date 실제 CIK 매핑(현재 None degrade)
+
+## BAL-16
+U1=옵션 A → R2 연기. etf.py stub 유지(코드 변경 0). 코어판정은 W1 tickers.py 완료.
+
+## 최종
+138 passed (unit 134 + integration 4), ruff 통과, py_compile 전건. → Phase 6/7 진입.
