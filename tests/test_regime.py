@@ -58,3 +58,11 @@ def test_fetch_us_cape_multpl_fallback(monkeypatch):
     monkeypatch.setattr(regime, "_cape_from_yale", lambda: (_ for _ in ()).throw(ValueError("xls")))
     monkeypatch.setattr(regime, "_cape_from_multpl", lambda: 29.1)
     assert regime._fetch_us_cape() == 29.1  # 1차 실패 → 2차
+
+
+@pytest.mark.unit
+def test_fetch_us_cape_both_fail_raises(monkeypatch):
+    monkeypatch.setattr(regime, "_cape_from_yale", lambda: (_ for _ in ()).throw(ValueError("xls")))
+    monkeypatch.setattr(regime, "_cape_from_multpl", lambda: (_ for _ in ()).throw(ValueError("html")))
+    with pytest.raises(ValueError):
+        regime._fetch_us_cape()

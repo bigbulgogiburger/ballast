@@ -16,7 +16,7 @@ from app.sources import retry
 log = logging.getLogger(__name__)
 
 _KOSPI_INDEX = "1001"
-_YALE_CAPE_URL = "http://www.econ.yale.edu/~shiller/data/ie_data.xls"
+_YALE_CAPE_URL = "https://www.econ.yale.edu/~shiller/data/ie_data.xls"  # TLS(S-3)
 _MULTPL_CAPE_URL = "https://www.multpl.com/shiller-pe"
 
 

@@ -61,6 +61,38 @@ def test_ohlcv_finnhub_quote_last_resort(monkeypatch):
 
 
 @pytest.mark.unit
+def test_ohlcv_finnhub_trade_date_from_timestamp(monkeypatch):
+    from datetime import datetime, timezone
+    monkeypatch.setattr(UsSource, "_ohlcv_stooq", lambda self, ct, s, e: None)
+    monkeypatch.setattr(UsSource, "_ohlcv_yf", lambda self, ct, s, e: None)
+    monkeypatch.setattr(us.config, "FINNHUB_API_KEY", "k")
+    ts = 1717400000
+
+    class R:
+        def raise_for_status(self): pass
+        def json(self): return {"c": 191.5, "t": ts}
+
+    monkeypatch.setattr(us.requests, "get", lambda *a, **k: R())
+    o = UsSource().ohlcv("AAPL")
+    assert o.trade_date == datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()
+
+
+@pytest.mark.unit
+def test_ohlcv_finnhub_no_timestamp_fallback(monkeypatch):
+    import re
+    monkeypatch.setattr(UsSource, "_ohlcv_stooq", lambda self, ct, s, e: None)
+    monkeypatch.setattr(UsSource, "_ohlcv_yf", lambda self, ct, s, e: None)
+    monkeypatch.setattr(us.config, "FINNHUB_API_KEY", "k")
+
+    class R:
+        def raise_for_status(self): pass
+        def json(self): return {"c": 191.5, "t": None}
+
+    monkeypatch.setattr(us.requests, "get", lambda *a, **k: R())
+    assert re.match(r"\d{4}-\d{2}-\d{2}", UsSource().ohlcv("AAPL").trade_date)
+
+
+@pytest.mark.unit
 def test_ohlcv_all_empty_raises(monkeypatch):
     from app.sources import EmptyResponseError
     monkeypatch.setattr(UsSource, "_ohlcv_stooq", lambda self, ct, s, e: None)
@@ -100,6 +132,23 @@ def test_fundamentals_negative_per_none(monkeypatch):
     monkeypatch.setattr(UsSource, "_fmp_ratios", lambda self, ct, key: _ratios([-3, 12, 10]))
     f = UsSource().fundamentals("AAPL")  # rows[0]=최신=적자
     assert f.per is None and f.per_pctile_5y is None
+
+
+@pytest.mark.unit
+def test_fundamentals_small_sample_pctile_none(monkeypatch):
+    monkeypatch.setattr(us.config, "FMP_API_KEY", "k")
+    monkeypatch.setattr(UsSource, "_fmp_ratios", lambda self, ct, key: _ratios([5, 10, 15]))
+    f = UsSource().fundamentals("AAPL")
+    assert f.per == 5.0 and f.per_pctile_5y is None  # 양수지만 표본<20
+
+
+@pytest.mark.unit
+def test_fundamentals_fmp_empty_raises(monkeypatch):
+    from app.sources import EmptyResponseError
+    monkeypatch.setattr(us.config, "FMP_API_KEY", "k")
+    monkeypatch.setattr(UsSource, "_fmp_ratios", lambda self, ct, key: [])
+    with pytest.raises(EmptyResponseError):
+        UsSource().fundamentals("AAPL")
 
 
 @pytest.mark.unit

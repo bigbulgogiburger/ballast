@@ -45,6 +45,21 @@ def test_valid_rate_rejects_nonpositive():
 
 
 @pytest.mark.unit
+def test_ecb_synthesis_math(monkeypatch):
+    # USDKRW = (KRW/EUR) / (USD/EUR) = 1491.54 / 1.08 ≈ 1380.13 (decisions §1.2 Q3)
+    monkeypatch.setattr(FxSource, "_ecb_rate",
+                        lambda self, ccy: 1491.54 if ccy == "KRW" else 1.08)
+    assert abs(FxSource()._from_ecb() - 1491.54 / 1.08) < 0.01
+
+
+@pytest.mark.unit
+def test_ecb_synthesis_partial_none(monkeypatch):
+    monkeypatch.setattr(FxSource, "_ecb_rate",
+                        lambda self, ccy: None if ccy == "KRW" else 1.08)
+    assert FxSource()._from_ecb() is None  # 결측 → 폴백 유도
+
+
+@pytest.mark.unit
 def test_usdkrw_invalid_then_valid(monkeypatch):
     # 1차가 무효값(0) 반환 → _from_ecb이 _valid_rate로 None → 다음 폴백
     monkeypatch.setattr(FxSource, "_from_ecb", lambda self: None)

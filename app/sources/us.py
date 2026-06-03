@@ -9,6 +9,7 @@ UsSource = PriceSource + NewsSource. 무료 소스 폴백 체인으로 30종목 
 """
 import logging
 from datetime import date, datetime, timedelta, timezone
+from urllib.parse import quote
 
 import requests
 
@@ -114,7 +115,9 @@ class UsSource:
             raise KeyError("FINNHUB_API_KEY 미설정")
         q = requests.get(
             _FINNHUB_QUOTE_URL,
-            params={"symbol": to_source("finnhub", ct, "US"), "token": key}, timeout=10,
+            params={"symbol": to_source("finnhub", ct, "US")},
+            headers={"X-Finnhub-Token": key},  # 키는 헤더로(URL 노출 차단, S-1)
+            timeout=10,
         )
         q.raise_for_status()
         data = q.json()
@@ -150,8 +153,10 @@ class UsSource:
         )
 
     def _fmp_ratios(self, ct: str, key: str) -> list:
+        # sym을 URL path에 넣기 전 인코딩 — path traversal 차단(S-2). FMP는 apikey 헤더 미지원→query.
+        sym = quote(to_source("fmp", ct, "US"), safe="")
         r = requests.get(
-            _FMP_RATIOS_URL.format(sym=to_source("fmp", ct, "US")),
+            _FMP_RATIOS_URL.format(sym=sym),
             params={"period": "annual", "limit": 5, "apikey": key}, timeout=10,
         )
         r.raise_for_status()
@@ -176,8 +181,10 @@ class UsSource:
             params={
                 "symbol": to_source("finnhub", ct, "US"),
                 "from": (today - timedelta(days=7)).isoformat(),
-                "to": today.isoformat(), "token": key,
-            }, timeout=10,
+                "to": today.isoformat(),
+            },
+            headers={"X-Finnhub-Token": key},  # 키는 헤더로(S-1)
+            timeout=10,
         )
         r.raise_for_status()
         items = r.json() if isinstance(r.json(), list) else []
