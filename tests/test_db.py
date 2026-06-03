@@ -4,7 +4,7 @@ import sqlite3
 import pytest
 
 from app import db
-from app.models import Funda, OHLCV
+from app.models import Funda, FxRate, OHLCV
 
 _TABLES = {
     "holdings", "settings", "price_snapshot", "fundamentals_snapshot",
@@ -178,7 +178,7 @@ def test_upsert_funda_null_pctile(conn):
 
 @pytest.mark.unit
 def test_upsert_fx_default_pair(conn):
-    db.upsert_fx(conn, {"trade_date": "2024-01-02", "pair": "USDKRW", "rate": 1300.0})
+    db.upsert_fx(conn, FxRate(trade_date="2024-01-02", pair="USDKRW", rate=1300.0))
     row = db.latest_fx(conn)
     assert row["pair"] == "USDKRW" and row["rate"] == 1300.0
 
@@ -213,8 +213,8 @@ def test_latest_funda_returns_max_date(conn):
 
 @pytest.mark.unit
 def test_latest_fx_returns_max_date(conn):
-    db.upsert_fx(conn, {"trade_date": "2024-01-02", "pair": "USDKRW", "rate": 1300.0})
-    db.upsert_fx(conn, {"trade_date": "2024-01-03", "pair": "USDKRW", "rate": 1310.0})
+    db.upsert_fx(conn, FxRate(trade_date="2024-01-02", pair="USDKRW", rate=1300.0))
+    db.upsert_fx(conn, FxRate(trade_date="2024-01-03", pair="USDKRW", rate=1310.0))
     row = db.latest_fx(conn)
     assert row["trade_date"] == "2024-01-03" and row["rate"] == 1310.0
 

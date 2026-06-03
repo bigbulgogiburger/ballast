@@ -76,3 +76,15 @@ class RegimeRow:
     as_of: str                 # 기준월 ('YYYY-MM-01')
     kospi_pbr: float | None    # KR — pykrx 지수 PBR
     us_cape: float | None      # US — Shiller CAPE (W1=None)
+
+
+@dataclass(frozen=True)
+class FxRate:
+    """환율 DTO (W2 — BAL-14). 05 §1.5 fx_snapshot 컬럼 1:1 (asdict 키 = 전체명).
+
+    W1 decisions §3.8에서 W2로 유보됐던 DTO. 본 슬라이스가 유보 해제.
+    """
+
+    trade_date: str   # 'YYYY-MM-DD'
+    pair: str         # 'USDKRW'
+    rate: float       # USD 1단위 = KRW (decisions §1.2 Q5)

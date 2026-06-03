@@ -9,11 +9,9 @@ upsert·백필·신선도 집계는 W2+ (Out of scope).
 """
 import dataclasses
 import sqlite3
-from collections.abc import Mapping
-from typing import Any
 
 from app.config import SETTINGS_DEFAULTS  # @dataclass(frozen=True) Settings 인스턴스
-from app.models import Funda, OHLCV
+from app.models import Funda, FxRate, Headline, OHLCV, RegimeRow
 
 
 def connect(db_path: str = "data/ballast.db") -> sqlite3.Connection:
@@ -222,12 +220,71 @@ def upsert_funda(conn: sqlite3.Connection, row: Funda) -> None:
     conn.commit()
 
 
-def upsert_fx(conn: sqlite3.Connection, row: Mapping[str, Any]) -> None:
-    """fx 적재. W1은 FxRate DTO 미정의 → dict-like surface(decisions §3.8). self-commit."""
+def upsert_fx(conn: sqlite3.Connection, row: FxRate) -> None:
+    """fx 적재. W2에서 FxRate frozen dataclass로 통일(decisions §3.1, W1 dict-surface 대체). self-commit."""
     conn.execute(
         "INSERT INTO fx_snapshot (trade_date, pair, rate) "
         "VALUES (:trade_date, :pair, :rate) "
         "ON CONFLICT (trade_date, pair) DO UPDATE SET rate=excluded.rate",
-        dict(row),
+        dataclasses.asdict(row),
+    )
+    conn.commit()
+
+
+# ── W2 헬퍼 (BAL-2 / decisions §3.5) — collect.py(BAL-17) 의존물, W2-1 선커밋 ──
+
+def auto_holdings(conn: sqlite3.Connection, user_id: int = 1) -> list[sqlite3.Row]:
+    """tracking='auto' 보유종목 행. collect가 market/canonical_ticker/name 키로 순회. 05 §1.1."""
+    return conn.execute(
+        "SELECT id, market, canonical_ticker, name, quantity, ccy "
+        "FROM holdings WHERE user_id = ? AND tracking = 'auto'",
+        (user_id,),
+    ).fetchall()
+
+
+def upsert_news(
+    conn: sqlite3.Connection, rows: list[Headline], ct: str, trade_date: str
+) -> None:
+    """뉴스 헤드라인 적재. PK(ct,trade_date,url) → DO NOTHING(url 중복 무시, 05 §1.6/§4.1)."""
+    for h in rows:
+        conn.execute(
+            "INSERT INTO news_snapshot (canonical_ticker, trade_date, url, title, source) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT (canonical_ticker, trade_date, url) DO NOTHING",
+            (ct, trade_date, h.url, h.title, h.source),
+        )
+    conn.commit()
+
+
+def upsert_market_regime(conn: sqlite3.Connection, row: RegimeRow) -> None:
+    """레짐 적재. as_of→trade_date, us_cape→shiller_cape 매핑(05 §1.7). ON CONFLICT DO UPDATE."""
+    conn.execute(
+        "INSERT INTO market_regime (trade_date, shiller_cape, kospi_pbr) "
+        "VALUES (:trade_date, :shiller_cape, :kospi_pbr) "
+        "ON CONFLICT (trade_date) DO UPDATE SET "
+        "shiller_cape=excluded.shiller_cape, kospi_pbr=excluded.kospi_pbr",
+        {"trade_date": row.as_of, "shiller_cape": row.us_cape, "kospi_pbr": row.kospi_pbr},
+    )
+    conn.commit()
+
+
+def upsert_collect_run(
+    conn: sqlite3.Connection,
+    trade_date: str,
+    market: str,
+    status: str,
+    n_ok: int,
+    n_fail: int,
+    missing_tickers: str | None,
+) -> None:
+    """수집 실행 기록. PK(trade_date,market). missing_tickers=caller가 json.dumps한 문자열. 05 §1.8/§4.2."""
+    conn.execute(
+        "INSERT INTO collect_run "
+        "(trade_date, market, status, n_ok, n_fail, missing_tickers) "
+        "VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT (trade_date, market) DO UPDATE SET "
+        "status=excluded.status, n_ok=excluded.n_ok, n_fail=excluded.n_fail, "
+        "missing_tickers=excluded.missing_tickers, created_at=datetime('now')",
+        (trade_date, market, status, n_ok, n_fail, missing_tickers),
     )
     conn.commit()
