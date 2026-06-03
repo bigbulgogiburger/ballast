@@ -108,6 +108,20 @@ def test_fundamentals_small_sample_pctile_none(monkeypatch):
     assert f.per == 14.0 and f.per_pctile_5y is None
 
 
+@pytest.mark.unit
+def test_fundamentals_empty_df_raises(monkeypatch):
+    monkeypatch.setattr(kr.stock, "get_market_fundamental", lambda *a, **k: pd.DataFrame())
+    with pytest.raises(EmptyResponseError):
+        KrSource().fundamentals("005930")
+
+
+@pytest.mark.unit
+def test_ohlcv_sma200_boundary_exactly_200(monkeypatch):
+    adj = _ohlcv_df([1000.0 + i for i in range(200)], periods=200)  # 정확히 200
+    monkeypatch.setattr(kr.stock, "get_market_ohlcv", lambda f, t, ct, adjusted=True: adj)
+    assert isinstance(KrSource().ohlcv("005930").sma200, float)  # 경계=200 → 실수치
+
+
 class _FakeResp:
     def __init__(self, items):
         self._items = items
