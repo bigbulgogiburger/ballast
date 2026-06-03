@@ -1,0 +1,40 @@
+{
+  "epic": "BAL-2",
+  "epic_summary": "[W2] M1 데이터 레이어 완성 — KR+US+FX+레짐 30종목",
+  "parents": ["BAL-13", "BAL-14", "BAL-15", "BAL-16", "BAL-17"],
+  "mode": "wave",
+  "mode_note": "다중 부모(5)지만 단일 에픽(BAL-2) 수직 슬라이스 → parallel-fanout 대신 의존 DAG wave (BAL-1 선례 + memory bal-repo-jira-facts). 공유파일(regime.py/models.py/db.py) + collect.py 통합자 의존 때문.",
+  "stage": "plan-supplement",
+  "total_phases": 3,
+  "dev_guide_path": "docs/BAL-{13..17}-dev-guide.md",
+  "sprint_contract_path": ".claude/runtime/sprint-contract/BAL-2.md",
+  "orchestration_doc": "docs/BAL-2-w2-orchestration.md",
+  "decisions": "docs/BAL-2-w2-decisions.md",
+  "plan_verdict": "REVISE→대부분 decisions/by-design 해소, 잔여 needs_user 2건(U1/U6)",
+  "branch": "feat/bal-2-w2-data-layer",
+  "base_commit": "b880169",
+  "harness_mode": "auto",
+  "subtasks_mode": true,
+  "subtasks": {
+    "BAL-13": ["BAL-49", "BAL-50"],
+    "BAL-17": ["BAL-51", "BAL-52", "BAL-53"]
+  },
+  "modules": {
+    "BAL-13": "app/sources/us.py",
+    "BAL-14": "app/sources/fx.py",
+    "BAL-15": "app/sources/regime.py (US 절반 — W1 기존 파일 수정)",
+    "BAL-16": "app/sources/etf.py",
+    "BAL-17": "app/collect.py"
+  },
+  "dag": {
+    "BAL-13": [], "BAL-14": [], "BAL-15": [], "BAL-16": [],
+    "BAL-17": ["BAL-13", "BAL-14", "BAL-15", "BAL-16"]
+  },
+  "slice_status": {
+    "BAL-13": "planning", "BAL-14": "planning", "BAL-15": "planning",
+    "BAL-16": "planning", "BAL-17": "planning"
+  },
+  "history": [
+    { "ts": "2026-06-03", "event": "Phase1 start: epic BAL-2 + BAL-13~17 + 하위 BAL-49/50/51/52/53 → In Progress, branch feat/bal-2-w2-data-layer off b880169(main)" }
+  ]
+}
