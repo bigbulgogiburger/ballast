@@ -1,0 +1,98 @@
+{
+  "issue_key": "BAL-4",
+  "branch": "feat/BAL-4",
+  "stage": "gate-passed",
+  "current_phase": 2,
+  "total_phases": 3,
+  "iteration": 2,
+  "dev_guide_path": "docs/BAL-4-dev-guide.md",
+  "sprint_contract_path": ".claude/runtime/sprint-contract/BAL-4.md",
+  "aggregate_verdict": "PASS",
+  "subtasks_mode": true,
+  "execution_shape": "epic-single-worktree-workflow-slices",
+  "subtasks": [
+    "BAL-24",
+    "BAL-25",
+    "BAL-26",
+    "BAL-27",
+    "BAL-28"
+  ],
+  "sub_subtasks": {
+    "BAL-27": [
+      "BAL-54",
+      "BAL-55"
+    ]
+  },
+  "slice_status": {
+    "BAL-24": "done",
+    "BAL-25": "done",
+    "BAL-26": "done",
+    "BAL-27": "done",
+    "BAL-28": "done"
+  },
+  "slice_dag": {
+    "BAL-24": [],
+    "BAL-25": [],
+    "BAL-26": [],
+    "BAL-27": [
+      "BAL-24",
+      "BAL-25",
+      "BAL-26"
+    ],
+    "BAL-28": [
+      "BAL-27"
+    ]
+  },
+  "wave_plan": {
+    "W1_parallel": [
+      "BAL-24",
+      "BAL-25",
+      "BAL-26"
+    ],
+    "W2_solo": [
+      "BAL-27"
+    ],
+    "W3_solo": [
+      "BAL-28"
+    ]
+  },
+  "file_ownership": {
+    "BAL-24": "app/llm.py (신규, ClaudeCLIClient subprocess — 06 §5.1)",
+    "BAL-25": "prompts/briefing.md (신규, 하드규칙·금지어·few-shot — 06 §6)",
+    "BAL-26": "app/schemas.py (신규, SECURITY_SCHEMA·PORTFOLIO_SCHEMA — 06 §2, §15.2 정합)",
+    "BAL-27": "app/briefing.py (run_securities/run_portfolio — 06 §5.2; 내부 BAL-54 배치+ct조인 G2, BAL-55 BANNED린트+RAW_NUMBER린터+슬롯주입)",
+    "BAL-28": "app/briefing.py (assemble_briefing+run_briefing 파이프라인 — 04 §10.3/§10.1) + app/config.py (disclaimer 상수)"
+  },
+  "conflict_note": "BAL-27·BAL-28 모두 app/briefing.py → 병렬 불가, 27→28 순차(28이 27 의존). Wave1 3개만 병렬.",
+  "context": {
+    "cloudId": "cf08c221-812d-4f6e-86da-2be8cb91dd5a",
+    "assignee_accountId": "60128ee9e3a14d0071e59d76",
+    "transition_in_progress": "21",
+    "transition_done": "31",
+    "qa_state_absent_done_is_closure": true,
+    "attribution_disabled_no_coauthor": true,
+    "wiki_absent_all_ingest_lint_skip": true,
+    "main_head_with_bal3_merged": "6d23707",
+    "spec_refs": "06-ai-agent.md §1.3/§2/§5.1/§5.2/§6; 04-backend.md §10.1 run_briefing/§10.3 assemble_briefing; models.py(SecurityLLMOut/SecurityCard/BriefingDoc/HoldExcluded from BAL-3)",
+    "existing_files": "app/briefing.py(1-line stub), app/config.py exists; app/llm.py·app/schemas.py·prompts/ 미존재"
+  },
+  "done_so_far": [
+    "Mode confirmed: Option 1 (epic single worktree + Workflow slices), user approved",
+    "§0 preconditions PASS (clean tree, agent-teams=1, HARNESS_MODE=auto, codex, main synced)",
+    "Branch feat/BAL-4 created off main 6d23707",
+    "5 issues fetched: all children of epic BAL-4 (W4 M3 AI briefing). BAL-27 has subtasks BAL-54/55."
+  ],
+  "next_steps": [
+    "Phase 1: transition BAL-4 + 24/25/26/27/28 (+54/55) to In Progress(21) + assignee + start comments",
+    "Phase 3: jira-plan — parent dev-guide + 5 slice dev-guides (docs/BAL-4-*.md)",
+    "Phase 3b: harness-plan — Sprint Contract .claude/runtime/sprint-contract/BAL-4.md",
+    "Phase 4: user approval gate",
+    "Phase 5: Workflow — W1 {24‖25‖26} parallel → W2 BAL-27 → W3 BAL-28; then harness-review (bal-security-reviewer+bal-test-writer)",
+    "Phase 6: jira-test → harness-gate → commit feat(BAL-4)",
+    "Phase 7: complete — 완료(31) transitions + push + archive BAL-4"
+  ],
+  "gate_verdict": "PASS",
+  "verdict_file": ".claude/runtime/aggregate-verdict.md",
+  "coverage_note": "app.briefing happy-path 커버 추가",
+  "tests_total": 222
+}
