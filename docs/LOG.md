@@ -31,3 +31,5 @@
 [2026-06-04T16:42 KST LINT-FIX BAL-3] rule=L05 action=phantom-adr-resolved detail=ADR-070→ADR-0002(신규 docs/adr/0002) 참조 교체
 [2026-06-04T16:42 KST LINT-FIX *] rule=L08 action=frontmatter-added detail=dev-guide 24개 YAML frontmatter prepend (issue/type/status/week/parent/created/closed)
 [2026-06-04T16:43 KST LINT post-fix] score=96 errors=0 warnings=2(L06 정보성·L11 정렬 수용) clean=12
+[2026-06-04T17:24 KST INGEST BAL-6 closure] guide=BAL-35-dev-guide.md week=W6 parent=- (epic) siblings=BAL-34..39 owns=scripts·ops·notify·collect·db·llm merge=e0f99a3·37672e6·e51d37e tests=313
+[2026-06-04T17:24 KST INGEST BAL-6::BAL-34..39 closure] index_rows=created(7) detail=parent BAL-6 + 6 형제 Task closed. review가 순환버그(BAL-36)·apikey누출(BAL-37) 포착·수정

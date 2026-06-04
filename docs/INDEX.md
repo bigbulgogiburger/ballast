@@ -2,7 +2,7 @@
 
 > LLM-maintained 카탈로그. **수동 편집 금지** — `jira-ingest`가 갱신한다(정책: `docs/INDEX-SCHEMA.md`).
 > 사람용 changelog는 `README`/`CHANGELOG.md`, 이벤트 로그는 `docs/LOG.md`.
-> Bootstrap: 2026-06-04 · entries 39 (foundational 9 · decisions 4 · issue_guides 24 · process 2)
+> Bootstrap: 2026-06-04 · entries 46 (foundational 9 · decisions 4 · issue_guides 31 · process 2)
 
 <!-- ingest-managed:begin file=INDEX.md -->
 
@@ -57,8 +57,16 @@
 | BAL-4::BAL-27 | closed | run_securities/run_portfolio | W4 | BAL-4 | app/briefing.py | Python Expert | 2026-06-04 |
 | BAL-4::BAL-28 | closed | assemble_briefing + run_briefing | W4 | BAL-4 | app/briefing.py, config.py | Python Expert | 2026-06-04 |
 | BAL-5 | closed | W5 M4 프론트엔드 (부모, 슬라이스 BAL-29~33 단일 master) | W5 | – | app/main.py·templates·static | Python Expert | 2026-06-04 |
+| BAL-6 | closed | W6 M5 통합·무인운영·하드닝 (부모, 형제 BAL-34~39) | W6 | – | scripts/·ops/·app(notify·collect·db·llm) | Python Expert | 2026-06-04 |
+| BAL-6::BAL-34 | closed | scripts 진입점 + make_llm_client 팩토리 | W6 | BAL-6 | scripts/, app/llm.py | Python Expert | 2026-06-04 |
+| BAL-6::BAL-35 | closed | launchd 스케줄러(08:00/08:30) + wake | W6 | BAL-6 | ops/*.plist, install.sh | Python Expert | 2026-06-04 |
+| BAL-6::BAL-36 | closed | 백필완료 게이트 G9 핸드오프(순환버그 수정) | W6 | BAL-6 | app/db.py | Python Expert | 2026-06-04 |
+| BAL-6::BAL-37 | closed | 수집 FAIL 푸시 알림(ntfy/Telegram) | W6 | BAL-6 | app/notify.py, collect.py | Python Expert | 2026-06-04 |
+| BAL-6::BAL-38 | closed | 보안 하드닝 회귀(127.0.0.1·.env·data/) | W6 | BAL-6 | app/main.py, .gitignore | Python Expert | 2026-06-04 |
+| BAL-6::BAL-39 | closed | E2E 무인 1사이클 리허설 | W6 | BAL-6 | tests/test_e2e_rehearsal.py | Python Expert | 2026-06-04 |
 
 > BAL-5 슬라이스(BAL-29 tokens·30 dashboard·31 holdings·32 routes·33 components)는 단일 master dev-guide(BAL-5-dev-guide.md)로 관리 — 별도 슬라이스 파일 없음.
+> BAL-6 형제 중 BAL-35만 dev-guide(BAL-35-dev-guide.md) 보유 — 나머지는 Workflow 툴 wave 직접 구현. 머지 e0f99a3·37672e6·e51d37e.
 
 ## 오케스트레이션 (process)
 
