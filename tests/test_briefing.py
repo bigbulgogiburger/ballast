@@ -290,6 +290,52 @@ def test_assemble_held_status_preserved_when_no_llm() -> None:
     assert doc.securities[0].status == "data_pending"  # 보류는 failed로 안 바뀜
 
 
+# ───────── 현금 holding 회귀 (E2E 발견: ct=None 현금이 '처리 실패' 카드로 렌더) ─────────
+def _cash_metric() -> briefing.SecurityMetric:
+    """현금 holding metric — canonical_ticker=None, instrument='cash', status='ok'."""
+    return briefing.SecurityMetric(
+        canonical_ticker=None, name="원화 예수금", market=None, instrument="cash",
+        asset_class="cash", category=None, status="ok", change_pct=None,
+        current_pct=19.0, target_pct=None, drift=None, rebalance_flag=False,
+        valuation=_valuation(), trend=_trend(),
+    )
+
+
+@pytest.mark.unit
+def test_cash_card_status_ok_without_llm() -> None:
+    """현금(llm_out None)은 분석 대상이 아니므로 failed가 아니라 'ok' 값 카드."""
+    card = briefing.build_security_card(_cash_metric(), None, _gate())
+    assert card.status == "ok"
+    assert card.comment == "" and card.investment_points == []
+
+
+@pytest.mark.unit
+def test_run_securities_excludes_cash_from_llm() -> None:
+    """현금(canonical_ticker=None)은 live 필터 제외 → LLM 미호출·failed에도 없음."""
+    client = FakeLLMClient([_sec_resp(_sec_item("005930"))])
+    cash = briefing.SecurityInput(
+        canonical_ticker=None, name="원화 예수금", market="", hold_status="ok",
+        slots={}, valuation_band=None, valuation_warmup=True, per=None,
+        trend_pos_52w="-", eps_trend="flat", headlines=[],
+    )
+    outs, failed = briefing.run_securities(client, [_sec_input("005930"), cash])
+    assert [o.canonical_ticker for o in outs] == ["005930"]
+    assert failed == []  # 현금은 failed로 분류되지 않음
+    assert len(client.calls) == 1  # 현금 단독 배치로 LLM 추가 호출 없음
+
+
+@pytest.mark.unit
+def test_assemble_cash_renders_ok_not_failed() -> None:
+    """assemble_briefing: 현금 metric → 'ok' 카드(주식 failed 회귀 격리)."""
+    doc = briefing.assemble_briefing(
+        _bundle(_metric("005930", status="ok"), _cash_metric()),
+        [briefing.SecurityLLMOut("005930", "코멘트", "추세", ["포인트"])],
+        [], {}, _gate(),
+    )
+    cash_card = next(c for c in doc.securities if c.instrument == "cash")
+    assert cash_card.status == "ok"
+
+
 # ─────────────────────── 케이스 6: run_briefing ───────────────────────
 @pytest.mark.integration
 def test_run_briefing_blocked_collect_incomplete_returns_banner_doc(conn) -> None:
