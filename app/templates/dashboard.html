@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "_components.html" import freshness_badge, security_card, stack_bar %}
+
+{% block title %}대시보드 · Ballast{% endblock %}
+
+{% block content %}
+{% if doc is none %}
+{# G3 — 아직 브리핑 없음(day-0 적재중) 빈 상태 #}
+<section class="empty-state">
+  <p>초기 데이터 적재중입니다.</p>
+  <p class="placeholder">첫 브리핑이 생성되면 여기에 표시됩니다.</p>
+</section>
+{% else %}
+
+{# ① 레짐 한 줄 (헤더·면책은 base.html) #}
+<section class="regime">
+  <p class="title-sm">{{ doc.regime_label }}</p>
+</section>
+
+{# ② 게이트/부분보류 배너 (정상시 doc.banner=None) #}
+{% if doc.banner %}
+<p class="warn-block" role="alert">{{ doc.banner }}</p>
+{% endif %}
+
+{# ③ 신선도 배지 #}
+{{ freshness_badge(badge) }}
+
+{# ④ 자산배분 1·2층 (CSS 누적 바) #}
+<section class="alloc">
+  {% set a = doc.asset_allocation %}
+  <h2 class="title-sm">자산군 배분 (주식 / 현금)</h2>
+  {% if a.equity_pct is none %}
+  <p class="placeholder">환율 데이터 결측으로 1층 배분 산출을 보류했습니다.</p>
+  {% else %}
+  {{ stack_bar('자산군 배분', [
+    {'pct': a.equity_pct, 'label': '주식', 'color': '--alloc-equity'},
+    {'pct': a.cash_pct, 'label': '현금', 'color': '--alloc-cash'},
+  ]) }}
+  {% endif %}
+
+  <h2 class="title-sm">주식 내 코어 / 새틀</h2>
+  {{ stack_bar('코어/새틀 배분', [
+    {'pct': a.core_pct, 'label': '코어', 'color': '--alloc-core'},
+    {'pct': a.satellite_pct, 'label': '새틀', 'color': '--alloc-sat'},
+  ]) }}
+  {% if a.satellite_over_limit %}
+  <p class="warn-block">새틀라이트(개별주)가 한도를 초과했습니다.</p>
+  {% endif %}
+</section>
+
+{# ⑤ 요약뷰 종목 — security_card 매크로가 status·rebalance_flag로 펼침/접힘 분기 #}
+<section class="securities">
+  <h2 class="title-sm">종목</h2>
+  {% for card in doc.securities %}
+  {{ security_card(card) }}
+  {% endfor %}
+</section>
+
+{# ⑥ 리밸런싱 + DCA #}
+<section class="portfolio-comment">
+  {% set pc = doc.portfolio_comment %}
+  {% if pc.rebalance_note %}
+  <h2 class="title-sm">리밸런싱 검토</h2>
+  <p>{{ pc.rebalance_note }}</p>
+  {% endif %}
+  {% if pc.dca_note %}
+  <h2 class="title-sm">적립 (DCA)</h2>
+  <p>{{ pc.dca_note }}</p>
+  {% endif %}
+  {% if doc.dca.allocations %}
+  <ul class="sec-points">
+    {% for ct, amount in doc.dca.allocations.items() %}
+    <li><span class="sec-name">{{ ct }}</span> <span class="num">₩{{ '{:,.0f}'.format(amount) }}</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+{# ⑦ 면책 푸터 #}
+<footer class="disclaimer-footer">
+  {{ doc.disclaimer }}
+</footer>
+
+{% endif %}
+{% endblock %}

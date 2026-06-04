@@ -1,0 +1,120 @@
+{# _components.html — 재사용 Jinja 매크로 (BAL-33). 03 §4.2·§5·§7.
+   계산 0: DTO 필드만 신뢰하고 Jinja 포맷팅만. 등락은 색+부호 병기(접근성 §7).
+   보류/제외/워밍업은 placeholder 표시(빈칸 금지, e2e G3/G6). #}
+
+{# ─────────────── 신선도 배지 (§4.2) ─────────────── #}
+{% macro freshness_badge(badge) %}
+<div class="badge-row" role="status" aria-label="데이터 신선도">
+  <span class="badge badge--{{ badge.worst_level }}">시세: {{ badge.price_age_days }}일 전</span>
+  <span class="badge">펀더멘털: {{ badge.funda_label }}</span>
+  <span class="badge">환율: {{ badge.fx_age_days }}일 전</span>
+</div>
+{% if badge.consecutive_fallback %}
+<p class="warn-block" role="alert">데이터가 여러 날 연속 갱신되지 않았습니다.</p>
+{% endif %}
+{% endmacro %}
+
+{# ─────────────── 자산배분 누적 바 (§5, flex + width%) ─────────────── #}
+{# segs: [{'pct': float, 'label': str, 'color': str(css var)}] #}
+{% macro stack_bar(label, segs) %}
+{% set aria = segs | map(attribute='label') | join(' ') %}
+<div class="stack-bar" role="img" aria-label="{{ label }}: {{ aria }}">
+  {% for s in segs %}
+  <span class="stack-seg" style="width: {{ '%.0f'|format(s.pct) }}%; background: var({{ s.color }});">
+    <span class="seg-label">{{ s.label }} {{ '%.0f'|format(s.pct) }}%</span>
+  </span>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{# ─────────────── 등락 표기 (색 + 부호 병기, §7) ─────────────── #}
+{% macro change_badge(change_pct) %}
+{% if change_pct is none %}
+  <span class="move-flat">—</span>
+{% elif change_pct > 0 %}
+  <span class="move-up">+{{ '%.1f'|format(change_pct) }}%</span>
+{% elif change_pct < 0 %}
+  <span class="move-down">{{ '%.1f'|format(change_pct) }}%</span>
+{% else %}
+  <span class="move-flat">0.0%</span>
+{% endif %}
+{% endmacro %}
+
+{# ─────────────── 종목 카드 (status 분기) ─────────────── #}
+{# status: 'ok'|'data_pending'|'fx_held'|'warmup'|'failed'. 빈칸 금지(G3/G6). #}
+{% macro security_card(card) %}
+{% set needs_attention = card.status != 'ok' or card.rebalance_flag %}
+{% if card.status == 'failed' %}
+<article class="sec-card sec-card--fail">
+  <summary class="sec-card-head">
+    <span class="sec-name">{{ card.name or card.canonical_ticker }}</span>
+    <span class="placeholder">처리 실패</span>
+  </summary>
+  <div class="sec-body">
+    <p class="placeholder">이 종목은 브리핑 생성에 실패했습니다. 다음 갱신을 기다려주세요.</p>
+  </div>
+</article>
+{% elif card.status != 'ok' %}
+{# 보류 placeholder: data_pending / fx_held / warmup #}
+<article class="sec-card sec-card--placeholder">
+  <summary class="sec-card-head">
+    <span class="sec-name">{{ card.name or card.canonical_ticker }}</span>
+    {% if card.status == 'data_pending' %}
+    <span class="placeholder">데이터 준비중</span>
+    {% elif card.status == 'fx_held' %}
+    <span class="placeholder">환율 결측으로 비중 산출 보류</span>
+    {% elif card.status == 'warmup' %}
+    <span class="placeholder">5년 워밍업 중(절대 PER만)</span>
+    {% else %}
+    <span class="placeholder">보류</span>
+    {% endif %}
+  </summary>
+  <div class="sec-body">
+    <table class="density">
+      <tr>
+        <th>PER</th><th>PBR</th><th>배당</th>
+      </tr>
+      <tr>
+        <td class="num">{{ '%.1f'|format(card.per) if card.per is not none else '—' }}</td>
+        <td class="num">{{ '%.1f'|format(card.pbr) if card.pbr is not none else '—' }}</td>
+        <td class="num">{{ '%.1f'|format(card.div_yield) ~ '%' if card.div_yield is not none else '—' }}</td>
+      </tr>
+    </table>
+    <p class="placeholder">{{ card.valuation_label }}</p>
+  </div>
+</article>
+{% else %}
+{# 정상 카드 — needs_attention(rebalance_flag)면 펼침 #}
+<details class="sec-card"{% if needs_attention %} open{% endif %}>
+  <summary>
+    <span class="sec-name">{{ card.name or card.canonical_ticker }}</span>
+    {{ change_badge(card.change_pct) }}
+    <span class="num">비중 {{ '%.1f'|format(card.current_pct) }}%</span>
+    {% if card.rebalance_flag %}<span class="badge badge--warn">리밸런싱</span>{% endif %}
+  </summary>
+  <div class="sec-body">
+    <p>{{ card.comment }}</p>
+    <table class="density">
+      <tr>
+        <th>현재비중</th><th>목표비중</th><th>드리프트</th>
+        <th>PER</th><th>PBR</th><th>배당</th>
+      </tr>
+      <tr>
+        <td class="num">{{ '%.1f'|format(card.current_pct) }}%</td>
+        <td class="num">{{ '%.1f'|format(card.target_pct) ~ '%' if card.target_pct is not none else '—' }}</td>
+        <td class="num">{{ '%+.1f'|format(card.drift) ~ '%p' if card.drift is not none else '—' }}</td>
+        <td class="num">{{ '%.1f'|format(card.per) if card.per is not none else '—' }}</td>
+        <td class="num">{{ '%.1f'|format(card.pbr) if card.pbr is not none else '—' }}</td>
+        <td class="num">{{ '%.1f'|format(card.div_yield) ~ '%' if card.div_yield is not none else '—' }}</td>
+      </tr>
+    </table>
+    {% if card.trend_note %}<p>{{ card.trend_note }}</p>{% endif %}
+    {% if card.investment_points %}
+    <ul class="sec-points">
+      {% for p in card.investment_points %}<li>{{ p }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+</details>
+{% endif %}
+{% endmacro %}

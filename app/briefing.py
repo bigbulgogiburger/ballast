@@ -18,7 +18,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from datetime import date
 
-from app import config, db
+from app import calendar, config, db
 from app.llm import LLMError
 from app.metrics import portfolio as pf
 from app.metrics import security as sec
@@ -27,6 +27,7 @@ from app.metrics.priced import build_priced
 from app.models import (
     OHLCV,
     BriefingDoc,
+    FreshnessBadge,
     Funda,
     Headline,
     HoldExcluded,
@@ -646,3 +647,109 @@ def run_briefing(conn: sqlite3.Connection, llm: LLMClient, user_id: int = 1) -> 
         len(sec_failed),
     )
     return db.insert_briefing(conn, user_id, doc.to_json(), model=_MODEL)
+
+
+# ─────────────────────── 04 §6.3 / 03 §4 신선도 배지 ───────────────────────
+def _parse_iso(value: str | None) -> date | None:
+    """'YYYY-MM-DD' → date(파싱 실패/None → None)."""
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _age_days(latest: str | None, expected: date) -> int:
+    """expected 기대 거래일 대비 latest 스냅샷의 경과 일수(데이터 없음/미래 → 큰 값으로 degrade).
+
+    휴장은 calendar가 expected를 직전 거래일로 잡아 자동 흡수(03 §4.1). 음수(미래)는 0.
+    """
+    d = _parse_iso(latest)
+    if d is None:
+        return 999  # 데이터 결측 → warn 임계 초과(안전 degrade)
+    return max((expected - d).days, 0)
+
+
+def _months_ago_label(report_date: str | None, today: date) -> str:
+    """report_date 기반 '대략 N개월 전' 라벨(미확보 → '미확보(워밍업)'). 03 §4.1."""
+    d = _parse_iso(report_date)
+    if d is None:
+        return "미확보(워밍업)"
+    months = max((today.year - d.year) * 12 + (today.month - d.month), 0)
+    return "이번 달" if months == 0 else f"{months}개월 전"
+
+
+_LEVEL_RANK = {"fresh": 0, "stale": 1, "warn": 2}
+
+
+def _level(age: int) -> str:
+    """경과 일수 → worst_level 등급. 03 §4.2 / §4 시그니처."""
+    if age <= 1:
+        return "fresh"
+    if age <= 4:
+        return "stale"
+    return "warn"
+
+
+def _markets_for_badge(conn: sqlite3.Connection) -> list[str]:
+    """보유 시장 집합(없으면 KR 기본 — 기대 거래일 산출용)."""
+    markets = db.markets_in_use(conn)
+    return markets if markets else ["KR"]
+
+
+def _consecutive_fallback(conn: sqlite3.Connection) -> bool:
+    """최신 collect_run이 모든 시장에서 fallback(BACKFILL/OK_HOLIDAY 외 비정상)인지. 데이터 없음 → False."""
+    seen = False
+    for market in _markets_for_badge(conn):
+        run = db.latest_collect_run(conn, market)
+        if run is None:
+            continue
+        seen = True
+        if run["status"] not in ("FAIL", "PARTIAL", "BACKFILL"):
+            return False
+    return seen
+
+
+def build_freshness_badge(conn: sqlite3.Connection) -> FreshnessBadge:
+    """시세·펀더·환율 신선도 배지(G10 — 종목별 최악 집계). DB 결측 시 안전 degrade. 04 §6.3 / 03 §4."""
+    today = date.today()
+    markets = _markets_for_badge(conn)
+
+    # 시세: 보유 시장별 기대 거래일 대비 경과(최악=최고령). KR/US만 사용.
+    price_age = max(
+        _age_days(
+            conn.execute(
+                "SELECT MAX(trade_date) AS d FROM price_snapshot "
+                "WHERE canonical_ticker IN ("
+                "SELECT canonical_ticker FROM holdings "
+                "WHERE market = :market AND canonical_ticker IS NOT NULL)",
+                {"market": market},
+            ).fetchone()["d"],
+            calendar.expected_trade_date(market, today),  # type: ignore[arg-type]
+        )
+        for market in markets
+        if market in ("KR", "US")
+    )
+
+    # 환율: USDKRW 스냅샷 — US 기대일(전일 마감) 기준.
+    fx_latest = conn.execute(
+        "SELECT MAX(trade_date) AS d FROM fx_snapshot"
+    ).fetchone()["d"]
+    fx_age = _age_days(fx_latest, calendar.expected_trade_date("US", today))
+
+    # 펀더멘털: 최신 report_date 라벨(연령은 worst_level에 미반영 — 라벨 표시만).
+    funda_latest = conn.execute(
+        "SELECT MAX(report_date) AS d FROM fundamentals_snapshot"
+    ).fetchone()["d"]
+    funda_label = _months_ago_label(funda_latest, today)
+
+    worst = max(_level(price_age), _level(fx_age), key=_LEVEL_RANK.__getitem__)
+
+    return FreshnessBadge(
+        price_age_days=price_age,
+        funda_label=funda_label,
+        fx_age_days=fx_age,
+        worst_level=worst,
+        consecutive_fallback=_consecutive_fallback(conn),
+    )

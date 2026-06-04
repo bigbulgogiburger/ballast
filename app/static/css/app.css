@@ -1,0 +1,345 @@
+/* app.css — 컴포넌트 스타일. tokens.css 변수만 참조(BAL-33). 03 §6.
+   드롭섀도 금지(hairline-only). CTA는 --c-primary(Teal)만, 등락은 --c-up/--c-down. */
+
+/* ─────────────── 레이아웃 / 타이포 (design.md 톤) ─────────────── */
+body {
+  margin: 0;
+  background: var(--c-canvas);
+  color: var(--c-body);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+}
+
+main {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--s-lg) var(--s-base) var(--s-section);
+}
+
+h1,
+h2,
+h3 {
+  color: var(--c-ink);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.title-sm {
+  font-size: 0.95rem;
+  margin: var(--s-md) 0 var(--s-xs);
+}
+
+a {
+  color: var(--c-primary);
+}
+
+/* ─────────────── 헤더 / 면책 ─────────────── */
+.site-header {
+  border-bottom: 1px solid var(--c-hairline);
+  padding-bottom: var(--s-sm);
+  margin-bottom: var(--s-md);
+}
+
+.wordmark {
+  color: var(--c-primary); /* CTA·헤더 = Teal 전용 */
+  font-weight: 700;
+}
+
+.disclaimer-line {
+  color: var(--c-muted);
+  font-size: 0.8rem;
+  margin: var(--s-xs) 0;
+}
+
+.disclaimer-footer {
+  border-top: 1px solid var(--c-hairline);
+  margin-top: var(--s-xl);
+  padding-top: var(--s-base);
+  color: var(--c-muted);
+  font-size: 0.8rem;
+}
+
+/* ─────────────── CTA 버튼 (Teal 전용) ─────────────── */
+.btn {
+  display: inline-block;
+  border: 1px solid var(--c-primary);
+  border-radius: var(--r-md);
+  background: var(--c-primary);
+  color: var(--c-on-primary);
+  padding: 0 var(--s-base);
+  min-height: 40px;
+  line-height: 40px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--c-primary-active);
+  border-color: var(--c-primary-active);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--c-primary);
+}
+
+/* ─────────────── 배지 (신선도, §4.2) ─────────────── */
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-xs);
+  margin: var(--s-sm) 0;
+}
+
+.badge {
+  display: inline-block;
+  border: 1px solid var(--c-hairline);
+  border-radius: var(--r-pill);
+  padding: 2px var(--s-sm);
+  font-size: 0.78rem;
+  color: var(--c-body);
+  background: var(--c-card);
+}
+
+.badge--fresh {
+  color: var(--c-success);
+  border-color: var(--c-success);
+}
+
+.badge--stale {
+  color: var(--c-muted);
+  border-color: var(--c-hairline-strong);
+}
+
+.badge--warn {
+  color: var(--c-warn);
+  border-color: var(--c-warn);
+  background: var(--c-warn-soft);
+}
+
+/* ─────────────── 경고 / 배너 블록 ─────────────── */
+.warn-block {
+  border: 1px solid var(--c-warn);
+  border-radius: var(--r-md);
+  background: var(--c-warn-soft);
+  color: var(--c-warn);
+  padding: var(--s-xs) var(--s-sm);
+  font-size: 0.85rem;
+  margin: var(--s-xs) 0;
+}
+
+.banner-info {
+  border: 1px solid var(--c-info);
+  border-radius: var(--r-md);
+  background: var(--c-card);
+  color: var(--c-info);
+  padding: var(--s-xs) var(--s-sm);
+  margin: var(--s-sm) 0;
+}
+
+/* ─────────────── 자산배분 누적 바 (§5, flex + width%) ─────────────── */
+.alloc {
+  margin: var(--s-md) 0;
+}
+
+.stack-bar {
+  display: flex;
+  width: 100%;
+  height: 28px;
+  border: 1px solid var(--c-hairline);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  margin-bottom: var(--s-xs);
+}
+
+.stack-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.seg-label {
+  color: var(--c-card);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding: 0 var(--s-xxs);
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* ─────────────── 종목 카드 (요약뷰 펼침/접힘) ─────────────── */
+.sec-card {
+  border: 1px solid var(--c-hairline);
+  border-radius: var(--r-lg);
+  background: var(--c-card);
+  margin: var(--s-xs) 0;
+  padding: 0;
+}
+
+.sec-card > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: var(--s-sm) var(--s-base);
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-sm);
+}
+
+.sec-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sec-name {
+  color: var(--c-ink);
+  font-weight: 600;
+}
+
+.sec-body {
+  padding: 0 var(--s-base) var(--s-sm);
+  border-top: 1px solid var(--c-hairline-soft);
+}
+
+.sec-points {
+  margin: var(--s-xs) 0 0;
+  padding-left: var(--s-md);
+}
+
+/* placeholder 카드(보류: data_pending / fx_held / warmup) */
+.sec-card--placeholder {
+  background: var(--c-hold-soft);
+  border-color: var(--c-hairline-strong);
+}
+
+.sec-card--placeholder .sec-name {
+  color: var(--c-hold);
+}
+
+.placeholder {
+  color: var(--c-hold);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* fail 카드(LLM 미매칭/처리 실패, G2) */
+.sec-card--fail {
+  background: var(--c-fail-soft);
+  border-color: var(--c-fail);
+}
+
+.sec-card--fail .sec-name {
+  color: var(--c-fail);
+}
+
+/* ─────────────── 등락 표기 (색 + 부호 병기, §7) ─────────────── */
+.move-up {
+  color: var(--c-up);
+}
+
+.move-down {
+  color: var(--c-down);
+}
+
+.move-flat {
+  color: var(--c-flat);
+}
+
+/* ─────────────── 밀도 표 (30종목 고밀도, tabular-nums) ─────────────── */
+.density {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--density-fs);
+  line-height: var(--density-lh);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+.density th,
+.density td {
+  height: var(--density-row-h);
+  padding: 0 var(--s-xs);
+  border-bottom: 1px solid var(--c-hairline-soft);
+  text-align: right;
+}
+
+.density th {
+  color: var(--c-muted);
+  font-weight: 600;
+}
+
+.density td:first-child,
+.density th:first-child {
+  text-align: left;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* ─────────────── 폼 / 테이블 ─────────────── */
+.field-error {
+  color: var(--c-error);
+  font-size: 0.8rem;
+  margin: var(--s-xxs) 0;
+}
+
+.empty-state {
+  color: var(--c-muted);
+  padding: var(--s-lg);
+  text-align: center;
+  border: 1px dashed var(--c-hairline-strong);
+  border-radius: var(--r-lg);
+}
+
+/* ─────────────── holdings.html (BAL-31) 참조 컴포넌트 ─────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.holdings-table {
+  width: 100%;
+}
+
+.holdings-table td,
+.holdings-table th {
+  vertical-align: middle;
+}
+
+.btn-primary {
+  color: var(--c-on-primary);
+  background: var(--c-primary); /* CTA = Teal 전용 */
+  border-color: var(--c-primary);
+}
+
+.btn-primary:hover {
+  background: var(--c-primary-active);
+  border-color: var(--c-primary-active);
+}
+
+.form-errors {
+  color: var(--c-fail);
+  background: var(--c-fail-soft);
+  border: 1px solid var(--c-fail);
+  border-radius: var(--r-md);
+  padding: var(--s-sm) var(--s-base);
+  margin-bottom: var(--s-base);
+}
+
+.banner-success {
+  color: var(--c-success);
+  background: var(--c-canvas-soft);
+  border: 1px solid var(--c-success);
+  border-radius: var(--r-md);
+  padding: var(--s-sm) var(--s-base);
+  margin-bottom: var(--s-base);
+}

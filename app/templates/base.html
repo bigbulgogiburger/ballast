@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Ballast{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/tokens.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/">Ballast</a>
+    <nav class="site-nav">
+      <a href="/">대시보드</a>
+      <a href="/holdings">보유자산</a>
+      <a href="/settings">설정</a>
+    </nav>
+    <time class="site-date" datetime="{{ today }}">{{ today }}</time>
+  </header>
+
+  <p class="disclaimer-line">
+    본 브리핑은 정보 제공·교육 목적이며 투자 권유가 아닙니다.
+  </p>
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
