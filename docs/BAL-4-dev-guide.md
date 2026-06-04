@@ -1,3 +1,16 @@
+---
+issue: BAL-4
+title: W4 M3 AI 브리핑 (부모)
+type: composite
+status: closed
+week: W4
+parent: null
+related_adrs: [ADR-0002]
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-4] W4 · M3 AI 브리핑 — 통합 개발 가이드 (부모)
 
 > 생성일: 2026-06-04 · 스택: Python/FastAPI · 페르소나: Python Expert

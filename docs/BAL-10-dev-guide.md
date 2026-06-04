@@ -1,3 +1,15 @@
+---
+issue: BAL-10
+title: calendar.py XKRX/XNYS 거래일 로직
+type: single
+status: closed
+week: W1
+parent: null
+persona: Python Expert
+created: 2026-06-02
+closed: 2026-06-04
+---
+
 # BAL-10 개발 가이드 — `app/calendar.py` (XKRX/XNYS 거래일 로직)
 
 > 정본 순위: `TECH-DESIGN.md §15` > `docs/04-backend.md §6.1` > `docs/05-database.md`. seam 정본 = `docs/BAL-1-m1a-orchestration.md §2.3 (v2)`.

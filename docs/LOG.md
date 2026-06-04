@@ -27,3 +27,7 @@
 [2026-06-04T14:56 KST INGEST BAL-4::BAL-27 closure] guide=BAL-4-BAL-27-dev-guide.md parent=BAL-4 owns=app/briefing.py
 [2026-06-04T14:56 KST INGEST BAL-4::BAL-28 closure] guide=BAL-4-BAL-28-dev-guide.md parent=BAL-4 owns=app/briefing.py,config.py
 [2026-06-04T16:04 KST INGEST BAL-5 closure] guide=BAL-5-dev-guide.md week=W5 parent=- (epic) slices=BAL-29..33 (단일 master) merge=ffcf6ac
+[2026-06-04T16:40 KST LINT baseline] mode=full score=88 errors=1(L05) warnings=3(L08·L06·L11) clean=10
+[2026-06-04T16:42 KST LINT-FIX BAL-3] rule=L05 action=phantom-adr-resolved detail=ADR-070→ADR-0002(신규 docs/adr/0002) 참조 교체
+[2026-06-04T16:42 KST LINT-FIX *] rule=L08 action=frontmatter-added detail=dev-guide 24개 YAML frontmatter prepend (issue/type/status/week/parent/created/closed)
+[2026-06-04T16:43 KST LINT post-fix] score=96 errors=0 warnings=2(L06 정보성·L11 정렬 수용) clean=12

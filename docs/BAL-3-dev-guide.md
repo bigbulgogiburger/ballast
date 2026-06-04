@@ -1,9 +1,22 @@
+---
+issue: BAL-3
+title: W3 M2 지표 엔진 (부모)
+type: composite
+status: closed
+week: W3
+parent: null
+related_adrs: [ADR-0002]
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-3] W3 · M2 지표 엔진 — 통합 개발 가이드 (부모)
 
 > 생성일: 2026-06-04
 > 스택: Python / FastAPI (SQLite)
 > 페르소나: Python Expert
-> 실행 형태: **에픽 1개 + 6 자식 슬라이스** (단일 worktree `feat/BAL-3` + ADR-070 Agent Teams)
+> 실행 형태: **에픽 1개 + 6 자식 슬라이스** (단일 worktree `feat/BAL-3` + Workflow 툴 wave 병렬, ADR-0002)
 
 ## 1. 요구사항 요약
 

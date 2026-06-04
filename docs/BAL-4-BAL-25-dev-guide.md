@@ -1,3 +1,15 @@
+---
+issue: BAL-25
+title: prompts/briefing.md
+type: slice
+status: closed
+week: W4
+parent: BAL-4
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-25] prompts/briefing.md — slice dev-guide
 
 > 부모: `docs/BAL-4-dev-guide.md` · Wave1 (병렬) · 소유: `app/prompts/briefing.md` (신규)

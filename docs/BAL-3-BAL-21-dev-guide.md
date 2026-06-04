@@ -1,3 +1,15 @@
+---
+issue: BAL-21
+title: metrics.security change_pct·valuation·trend
+type: slice
+status: closed
+week: W3
+parent: BAL-3
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-21] metrics.security — change_pct·valuation·trend·regime — slice dev-guide
 
 > 부모: `docs/BAL-3-dev-guide.md` · Wave C (BAL-19 후, 20/22와 동시) · 소유: `app/metrics/security.py`

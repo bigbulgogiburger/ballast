@@ -2,7 +2,7 @@
 
 > LLM-maintained 카탈로그. **수동 편집 금지** — `jira-ingest`가 갱신한다(정책: `docs/INDEX-SCHEMA.md`).
 > 사람용 changelog는 `README`/`CHANGELOG.md`, 이벤트 로그는 `docs/LOG.md`.
-> Bootstrap: 2026-06-04 · entries 38 (foundational 9 · decisions 3 · issue_guides 24 · process 2)
+> Bootstrap: 2026-06-04 · entries 39 (foundational 9 · decisions 4 · issue_guides 24 · process 2)
 
 <!-- ingest-managed:begin file=INDEX.md -->
 
@@ -25,6 +25,7 @@
 | file | scope | updated |
 |------|-------|---------|
 | [adr/0001-claude-md-reference-layer.md](adr/0001-claude-md-reference-layer.md) | ADR-0001 CLAUDE.md 참조 레이어 | 2026-06-04 |
+| [adr/0002-single-tree-wave-execution.md](adr/0002-single-tree-wave-execution.md) | ADR-0002 단일트리 wave 실행 (BAL-3·4·5 참조) | 2026-06-04 |
 | [BAL-1-m1a-decisions.md](BAL-1-m1a-decisions.md) | W1 M1a 의사결정 로그 | 2026-06-02 |
 | [BAL-2-w2-decisions.md](BAL-2-w2-decisions.md) | W2 의사결정 로그 | 2026-06-03 |
 

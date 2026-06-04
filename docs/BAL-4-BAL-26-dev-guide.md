@@ -1,3 +1,15 @@
+---
+issue: BAL-26
+title: SECURITY/PORTFOLIO_SCHEMA
+type: slice
+status: closed
+week: W4
+parent: BAL-4
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-26] SECURITY_SCHEMA / PORTFOLIO_SCHEMA — slice dev-guide
 
 > 부모: `docs/BAL-4-dev-guide.md` · Wave1 (병렬) · 소유: `app/schemas.py` (신규)

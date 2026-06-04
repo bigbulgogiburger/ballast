@@ -1,3 +1,15 @@
+---
+issue: BAL-8
+title: db.py 연결·스키마·조회/적재 헬퍼
+type: single
+status: closed
+week: W1
+parent: null
+persona: Python Expert
+created: 2026-06-02
+closed: 2026-06-04
+---
+
 # BAL-8 dev-guide — `app/db.py` 연결·스키마·조회/적재 헬퍼
 
 > SSoT: `TECH-DESIGN.md §15`(최우선) → `docs/05-database.md` → `docs/04-backend.md`.

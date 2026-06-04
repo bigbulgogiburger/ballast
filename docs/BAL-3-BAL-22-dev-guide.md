@@ -1,3 +1,15 @@
+---
+issue: BAL-22
+title: gate evaluate_gate + collect_complete_today
+type: slice
+status: closed
+week: W3
+parent: BAL-3
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-22] gate — evaluate_gate + collect_complete_today — slice dev-guide
 
 > 부모: `docs/BAL-3-dev-guide.md` · Wave C (20/21과 동시) · 소유: `app/metrics/gate.py`(신규) + `app/db.py`

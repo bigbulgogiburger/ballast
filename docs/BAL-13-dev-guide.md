@@ -1,3 +1,15 @@
+---
+issue: BAL-13
+title: sources/us.py US 시세·펀더·뉴스 어댑터
+type: single
+status: closed
+week: W2
+parent: null
+persona: Python Expert
+created: 2026-06-03
+closed: 2026-06-04
+---
+
 # BAL-13 dev-guide — `app/sources/us.py` US 시세·펀더·뉴스 어댑터
 
 > SSoT: `docs/04-backend.md`(최우선) → `docs/05-database.md` → `docs/01-product-spec.md`.

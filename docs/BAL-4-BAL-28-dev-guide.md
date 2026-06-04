@@ -1,3 +1,15 @@
+---
+issue: BAL-28
+title: assemble_briefing + run_briefing
+type: slice
+status: closed
+week: W4
+parent: BAL-4
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-28] assemble_briefing + run_briefing 파이프라인 — slice dev-guide
 
 > 부모: `docs/BAL-4-dev-guide.md` · Wave2 · 소유: `app/briefing.py`(BAL-27과 공유) + `app/config.py`(disclaimer)

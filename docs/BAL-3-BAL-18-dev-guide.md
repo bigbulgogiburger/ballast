@@ -1,3 +1,15 @@
+---
+issue: BAL-18
+title: §15.2 DTO 전량 + Protocol
+type: slice
+status: closed
+week: W3
+parent: BAL-3
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-18] §15.2 DTO 전량 + Protocol — slice dev-guide
 
 > 부모: `docs/BAL-3-dev-guide.md` · Wave A (토대, 최우선) · 소유: `app/models.py`

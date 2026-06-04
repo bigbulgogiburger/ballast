@@ -1,3 +1,16 @@
+---
+issue: BAL-5
+title: W5 M4 프론트엔드 (부모, 슬라이스 BAL-29~33)
+type: composite
+status: closed
+week: W5
+parent: null
+related_adrs: [ADR-0002]
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # BAL-5 dev-guide — W5 M4 프론트엔드 (30초 스캔 대시보드)
 
 > 부모 에픽 **BAL-5**. 슬라이스 **BAL-29 / 30 / 31 / 32 / 33** (전부 형제 작업, subtask 없음 → `--subtasks` no-op).

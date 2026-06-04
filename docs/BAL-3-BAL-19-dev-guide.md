@@ -1,3 +1,15 @@
+---
+issue: BAL-19
+title: build_priced 통화정규화·보류
+type: slice
+status: closed
+week: W3
+parent: BAL-3
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-19] build_priced — 통화정규화·보류 처리 — slice dev-guide
 
 > 부모: `docs/BAL-3-dev-guide.md` · Wave B (BAL-18 후) · 소유: `app/metrics/priced.py` (신규)

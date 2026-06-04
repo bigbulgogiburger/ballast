@@ -1,3 +1,15 @@
+---
+issue: BAL-27
+title: run_securities/run_portfolio
+type: slice
+status: closed
+week: W4
+parent: BAL-4
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-27] run_securities/run_portfolio — slice dev-guide (하위 BAL-54/55)
 
 > 부모: `docs/BAL-4-dev-guide.md` · Wave2 · 소유: `app/briefing.py` (BAL-28과 공유 — 한 에이전트가 함께 구현)

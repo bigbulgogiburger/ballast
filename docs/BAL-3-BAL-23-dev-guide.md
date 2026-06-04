@@ -1,3 +1,15 @@
+---
+issue: BAL-23
+title: test_metrics 커버리지 ≥85%
+type: slice
+status: closed
+week: W3
+parent: BAL-3
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-23] test_metrics 커버리지 ≥85% — 회귀 5종 — slice dev-guide
 
 > 부모: `docs/BAL-3-dev-guide.md` · Wave D (18~22 전부 후, 마지막) · 소유: `tests/test_metrics.py`(신규)

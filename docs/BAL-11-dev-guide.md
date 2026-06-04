@@ -1,3 +1,15 @@
+---
+issue: BAL-11
+title: sources/kr.py KR 어댑터 + regime KR
+type: single
+status: closed
+week: W1
+parent: null
+persona: Python Expert
+created: 2026-06-02
+closed: 2026-06-04
+---
+
 # BAL-11 개발 가이드 — `app/sources/kr.py` (KR 어댑터: 시세·재무·뉴스) + regime KR
 
 > **정본 우선순위**: `TECH-DESIGN.md §15` > `docs/04-backend.md` > `docs/05-database.md`. seam 시그니처 정본 = `docs/BAL-1-m1a-orchestration.md §2`(v2, canonical 정합).

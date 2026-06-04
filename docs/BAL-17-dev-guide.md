@@ -1,3 +1,15 @@
+---
+issue: BAL-17
+title: collect.py 일배치 통합자
+type: single
+status: closed
+week: W2
+parent: null
+persona: Python Expert
+created: 2026-06-03
+closed: 2026-06-04
+---
+
 # BAL-17 dev-guide — `app/collect.py` 일배치 통합자 (수집 오케스트레이션 + collect_run 게이트 + 백필)
 
 > SSoT 우선순위: `docs/04-backend.md`(최우선) → `docs/05-database.md` → `docs/01-product-spec.md`.

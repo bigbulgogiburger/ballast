@@ -1,3 +1,15 @@
+---
+issue: BAL-14
+title: sources/fx.py USD/KRW 환율 어댑터
+type: single
+status: closed
+week: W2
+parent: null
+persona: Python Expert
+created: 2026-06-03
+closed: 2026-06-04
+---
+
 # BAL-14 dev-guide — `app/sources/fx.py` USD/KRW 환율 어댑터
 
 > SSoT 우선순위: `docs/04-backend.md`(최우선) → `docs/05-database.md` → `docs/01-product-spec.md`.

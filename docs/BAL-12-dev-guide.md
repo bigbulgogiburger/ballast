@@ -1,3 +1,15 @@
+---
+issue: BAL-12
+title: validate 빈응답 가드 + 005930 적재 E2E
+type: single
+status: closed
+week: W1
+parent: null
+persona: Python Expert
+created: 2026-06-02
+closed: 2026-06-04
+---
+
 # BAL-12 개발 가이드 — validate: 빈 응답 가드 + 005930 적재 E2E 증명
 
 > 정본 우선순위: `TECH-DESIGN.md §15` > `docs/04-backend.md` > `docs/05-database.md`. seam 시그니처 정본 = `docs/BAL-1-m1a-orchestration.md §2 (v2 canonical)`.

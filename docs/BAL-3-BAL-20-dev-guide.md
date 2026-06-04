@@ -1,3 +1,15 @@
+---
+issue: BAL-20
+title: metrics.portfolio auto_targets·drift·dca
+type: slice
+status: closed
+week: W3
+parent: BAL-3
+persona: Python Expert
+created: 2026-06-04
+closed: 2026-06-04
+---
+
 # [BAL-20] metrics.portfolio — auto_targets·drift·core_sat·dca — slice dev-guide
 
 > 부모: `docs/BAL-3-dev-guide.md` · Wave C (BAL-19 후, 21/22와 동시) · 소유: `app/metrics/portfolio.py`

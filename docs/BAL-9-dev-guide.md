@@ -1,3 +1,15 @@
+---
+issue: BAL-9
+title: tickers.py 변환표·코어 ETF 화이트리스트·분류
+type: single
+status: closed
+week: W1
+parent: null
+persona: Python Expert
+created: 2026-06-02
+closed: 2026-06-04
+---
+
 # BAL-9 개발 가이드 — `app/tickers.py` (티커 변환표 · 코어 ETF 화이트리스트 · category 분류)
 
 > 정본 우선순위: `TECH-DESIGN.md §15` > `docs/04-backend.md §5.1/§5.2/§5.3` > `docs/05-database.md §1.1`. seam 시그니처 정본 = `docs/BAL-1-m1a-orchestration.md §2.2(v2)`.
