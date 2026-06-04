@@ -242,6 +242,25 @@ def auto_holdings(conn: sqlite3.Connection, user_id: int = 1) -> list[sqlite3.Ro
     ).fetchall()
 
 
+def latest_collect_run(conn: sqlite3.Connection, market: str) -> sqlite3.Row | None:
+    """market별 최신 수집 실행 1행(MAX(trade_date)). 0건→None. 게이트(04 §10.2)용. 05 §1.8."""
+    return conn.execute(
+        "SELECT trade_date, market, status, n_ok, n_fail, missing_tickers "
+        "FROM collect_run WHERE market = ? ORDER BY trade_date DESC LIMIT 1",
+        (market,),
+    ).fetchone()
+
+
+def markets_in_use(conn: sqlite3.Connection, user_id: int = 1) -> list[str]:
+    """보유 종목이 있는 시장 집합(holdings.market DISTINCT, NULL=cash 제외). 04 §10.2."""
+    rows = conn.execute(
+        "SELECT DISTINCT market FROM holdings "
+        "WHERE user_id = ? AND market IS NOT NULL",
+        (user_id,),
+    ).fetchall()
+    return [r["market"] for r in rows]
+
+
 def upsert_news(
     conn: sqlite3.Connection, rows: list[Headline], ct: str, trade_date: str
 ) -> None:

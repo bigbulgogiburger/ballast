@@ -9,4 +9,5 @@ yfinance
 pandas-market-calendars
 python-dotenv
 pytest
+pytest-cov
 httpx
