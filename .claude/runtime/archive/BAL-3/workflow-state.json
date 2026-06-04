@@ -1,0 +1,53 @@
+{
+  "issue_key": "BAL-3",
+  "branch": "feat/BAL-3",
+  "stage": "plan-supplement",
+  "dev_guide_path": "docs/BAL-3-dev-guide.md",
+  "sprint_contract_path": ".claude/runtime/sprint-contract/BAL-3.md",
+  "total_phases": 4,
+  "updated_at": "2026-06-04T10:48:00",
+  "current_phase": 0,
+  "total_phases": 0,
+  "iteration": 0,
+  "dev_guide_path": null,
+  "sprint_contract_path": null,
+  "aggregate_verdict": null,
+  "changed_files": [],
+  "agent_outputs": {},
+  "history": [],
+  "subtasks_mode": true,
+  "execution_shape": "epic-single-worktree-agent-teams",
+  "subtasks": ["BAL-18", "BAL-19", "BAL-20", "BAL-21", "BAL-22", "BAL-23"],
+  "stage": "implementing-phase-3",
+  "current_phase": 3,
+  "slice_status": {
+    "BAL-18": "done",
+    "BAL-19": "done",
+    "BAL-20": "done",
+    "BAL-21": "done",
+    "BAL-22": "done",
+    "BAL-23": "done"
+  },
+  "stage": "gate-passed",
+  "gate_verdict": "PASS",
+  "gate_reason": "Aggregate PASS + py_compile OK + 195 passed + cov 99% + ruff clean",
+  "gated_at": "2026-06-04T13:22:30",
+  "aggregate_verdict": "PASS",
+  "iteration": 1,
+  "verdict_file": ".claude/runtime/aggregate-verdict.md",
+  "reviewed_at": "2026-06-04T13:21:54",
+  "coverage_pct": 99,
+  "tests_total": 195,
+  "agent_outputs": {
+    "bal-security-reviewer": "inline (Blocker 0, 5 advisory)",
+    "bal-test-writer": "inline (Blocker 0, 5 advisory)"
+  },
+  "slice_dag": {
+    "BAL-18": [],
+    "BAL-19": ["BAL-18"],
+    "BAL-20": ["BAL-19"],
+    "BAL-21": ["BAL-19"],
+    "BAL-22": ["BAL-18"],
+    "BAL-23": ["BAL-18", "BAL-19", "BAL-20", "BAL-21", "BAL-22"]
+  }
+}
