@@ -11,7 +11,7 @@ import logging
 import time
 from datetime import date
 
-from app import calendar, config, db
+from app import calendar, config, db, notify
 from app.sources import validate_response
 from app.sources.fx import FxSource
 from app.sources.kr import KrSource
@@ -90,6 +90,8 @@ def _collect_market(market: str, holdings: list, today: date, mode: str, conn) -
             log.warning("collect fail %s/%s: %s", market, ct, exc)
     status = _status_of(n_ok, n_fail, mode)
     db.upsert_collect_run(conn, td, market, status, n_ok, n_fail, json.dumps(missing))
+    if status == "FAIL":
+        notify.send_fail_alert(market, f"{n_fail}건 전부 실패 ({td})")
 
 
 def _collect_fx(today: date, mode: str, conn) -> None:
@@ -101,6 +103,10 @@ def _collect_fx(today: date, mode: str, conn) -> None:
     except Exception as exc:  # noqa: BLE001
         db.upsert_collect_run(conn, td, "FX", "FAIL", 0, 1, "[]")
         log.warning("fx collect fail: %s", exc)
+        # 고정 메시지만 — 예외 원문(FMP apikey 포함 URL 등) 알림 채널 노출 금지(CLAUDE.md).
+        # backfill 모드에선 _collect_market과 일관되게 알림 억제(스팸 방지).
+        if mode != "backfill":
+            notify.send_fail_alert("FX", f"환율 수집 실패 ({td})")
 
 
 def _collect_regime(today: date, conn) -> None:

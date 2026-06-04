@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.ballast.collect</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__REPO_DIR__/.venv/bin/python</string>
+		<string>__REPO_DIR__/scripts/run_collect.py</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>__REPO_DIR__</string>
+	<key>StartCalendarInterval</key>
+	<array>
+		<dict>
+			<key>Weekday</key>
+			<integer>1</integer>
+			<key>Hour</key>
+			<integer>8</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>Weekday</key>
+			<integer>2</integer>
+			<key>Hour</key>
+			<integer>8</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>Weekday</key>
+			<integer>3</integer>
+			<key>Hour</key>
+			<integer>8</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>Weekday</key>
+			<integer>4</integer>
+			<key>Hour</key>
+			<integer>8</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+		</dict>
+		<dict>
+			<key>Weekday</key>
+			<integer>5</integer>
+			<key>Hour</key>
+			<integer>8</integer>
+			<key>Minute</key>
+			<integer>0</integer>
+		</dict>
+	</array>
+	<key>RunAtLoad</key>
+	<false/>
+	<key>WakeForNetworkAccess</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>__REPO_DIR__/logs/collect.out.log</string>
+	<key>StandardErrorPath</key>
+	<string>__REPO_DIR__/logs/collect.err.log</string>
+</dict>
+</plist>

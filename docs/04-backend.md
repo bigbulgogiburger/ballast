@@ -804,6 +804,8 @@ if __name__ == "__main__":
 
 > 08:00 수집(겨울 EST 마감+무료소스 EOD publish 지연 흡수) → 08:30 브리핑. 두 cron은 독립 실행이라 **`run_briefing`이 진입 시 `collect_complete_today`로 오늘 수집 완료를 선검사**(§10.2)해 미완이면 보류한다(전날/부분 데이터 오판정 방지). 30분 윈도우가 빠듯하면(FMP 백오프로 수집 지연) 수집 07:45 또는 브리핑 08:45로 조정. **macOS SoT = launchd `StartCalendarInterval` + `caffeinate`/`pmset` wake**(절전 대응, G9), cron은 fallback 문서. 휴장일은 collect가 `OK_HOLIDAY`로 정상 skip.
 
+> macOS SoT=launchd, cron=fallback 확정(BAL-35 — `ops/*.plist`·`install.sh`, dev-guide `docs/BAL-35-dev-guide.md`).
+
 ---
 
 ## 12. 에러 처리 · 재시도 · fallback 요약
