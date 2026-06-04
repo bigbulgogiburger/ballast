@@ -437,6 +437,46 @@ def save_settings(
     conn.commit()
 
 
+def is_backfill_complete(conn: sqlite3.Connection) -> bool:
+    """백필 완료 게이트(BAL-36/M5 무인운영, G9 핸드오프). 보수적 판정 — 미설정·미적재·진행중은 모두 False.
+
+    True 조건(전부 충족):
+      1) tracking='auto' 종목이 1건 이상 존재(0건 → 미설정 오인 방지 False)
+      2) 모든 auto 종목이 price_snapshot·fundamentals_snapshot 양쪽에 최소 1행
+      3) KR auto 종목의 최신 fundamentals_snapshot.per_pctile_5y가 NOT NULL
+         (US는 FMP 한도 degrade로 per_pctile_5y NULL 영구 허용(04 §8.5/481행) → percentile 미요구)
+
+    NOTE: collect_run.status='BACKFILL' 체크는 쓰지 않는다 — _status_of가 mode=='backfill'이면
+    무조건 BACKFILL을 쓰므로(collect.py) status 기준 핸드오프는 순환(영원히 daily 미전환)한다.
+    완료 신호는 데이터 완성도(price/funda row + KR percentile 해제, 04 §8.5 G9)로 판정한다.
+    SQL은 named/? 바인딩만(문자열 연결 금지).
+    """
+    auto = conn.execute(
+        "SELECT canonical_ticker, market FROM holdings "
+        "WHERE user_id = 1 AND tracking = 'auto'"
+    ).fetchall()
+    if not auto:
+        return False
+    for r in auto:
+        ct = r["canonical_ticker"]
+        has_price = conn.execute(
+            "SELECT 1 FROM price_snapshot WHERE canonical_ticker = ? LIMIT 1",
+            (ct,),
+        ).fetchone()
+        if has_price is None:
+            return False
+        funda = conn.execute(
+            "SELECT per_pctile_5y FROM fundamentals_snapshot "
+            "WHERE canonical_ticker = ? ORDER BY trade_date DESC LIMIT 1",
+            (ct,),
+        ).fetchone()
+        if funda is None:
+            return False
+        if r["market"] == "KR" and funda["per_pctile_5y"] is None:
+            return False
+    return True
+
+
 def insert_briefing(
     conn: sqlite3.Connection, user_id: int, content_json: str, model: str
 ) -> int:

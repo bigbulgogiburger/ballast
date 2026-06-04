@@ -15,6 +15,11 @@ class LLMError(Exception):
     """claude CLI 실패(exit≠0) 또는 is_error envelope를 래핑."""
 
 
+def make_llm_client() -> "ClaudeCLIClient":
+    """기본 LLM 클라이언트 팩토리 — ClaudeCLIClient 반환(스크립트 진입점용)."""
+    return ClaudeCLIClient()
+
+
 class ClaudeCLIClient:
     """`claude -p` subprocess 어댑터. models.LLMClient Protocol 구현 (06 §5.1)."""
 
