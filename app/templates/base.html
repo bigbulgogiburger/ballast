@@ -4,18 +4,27 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Ballast{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/static/css/tokens.css">
   <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
   <header class="site-header">
-    <a class="wordmark" href="/">Ballast</a>
-    <nav class="site-nav">
-      <a href="/">대시보드</a>
-      <a href="/holdings">보유자산</a>
-      <a href="/settings">설정</a>
-    </nav>
-    <time class="site-date" datetime="{{ today }}">{{ today }}</time>
+    <div class="topbar">
+      <a class="wordmark" href="/"><span class="mark">◆</span>BALLAST</a>
+      <nav class="site-nav">
+        <a href="/">대시보드</a>
+        <a href="/holdings">보유자산</a>
+        <a href="/settings">설정</a>
+      </nav>
+      <span class="ticker-status">
+        <span class="live-dot" aria-hidden="true"></span>
+        <time class="site-date" datetime="{{ today }}">{{ today }} KST</time>
+      </span>
+    </div>
   </header>
 
   <p class="disclaimer-line">
