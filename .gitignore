@@ -5,3 +5,10 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .openchrome/
+
+# Harness 런타임 스크래치 (transient — 영구본은 .claude/runtime/archive/ 에 보존)
+.claude/runtime/changed-files.txt
+.claude/runtime/checkpoint.md
+.claude/runtime/workflow-state.json
+.claude/runtime/aggregate-verdict.md
+.claude/runtime/agent-outputs/
