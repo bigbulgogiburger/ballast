@@ -74,9 +74,13 @@ ruff check app/ tests/                               # 린트 (커밋 전)
 | 일배치 | collect·게이트·백필 | `.claude/docs/reference/data-collection.md` |
 | 테스트 규약 | 테스트 추가 | `.claude/docs/reference/testing.md` |
 | 설계 SoT(정본) | 요구·백엔드·DB·AI | `docs/01-product-spec.md` · `04-backend.md` · `05-database.md` · `06-ai-agent.md` |
-| 마일스톤 dev-guide | wave·슬라이스·결정 | `docs/BAL-{N}-dev-guide.md`(BAL-3·4) · `BAL-{1,2}-*-orchestration.md`·`*-decisions.md` |
+| 마일스톤 dev-guide | wave·슬라이스·결정 | `docs/BAL-{N}-dev-guide.md`(BAL-3·4·5) · `BAL-{1,2}-*-orchestration.md`·`*-decisions.md` |
+| Wiki Index | 착수 시 관련 이슈·dev-guide·상태 조회 | `docs/INDEX.md` |
+| Wiki Log | ingest 이벤트 로그 (append-only) | `docs/LOG.md` |
+| Wiki Schema | wiki 카테고리·정책 (사용자 편집) | `docs/INDEX-SCHEMA.md` |
 
 > ⚠️ `TECH-DESIGN.md`는 레포에 없음 — `docs/04·05·01`이 정본.
+> 📚 새 dev-guide 작성/완료 시 INDEX/LOG 자동 갱신(jira-plan/jira-complete chain). 누락 시 `/jira-ingest <KEY>`.
 
 ---
 Last Updated: 2026-06-04 (W3 지표엔진 BAL-3 · W4 AI브리핑 BAL-4 · W5 프론트엔드 BAL-5(BAL-29~33) 구현·main 머지)
