@@ -4,4 +4,5 @@
 |---|---|---|---|---|---|---|
 | BAL-1 (W1: BAL-8~12) | feat/bal-1-m1a-spike | PASS | 1/3 | (pending) | 2026-06-03 | M1a 데이터 스파이크 wave-3-1-1. 3 wave 게이트 전부 PASS. master 미머지 — harness-score가 머지 SHA backfill |
 | BAL-2 (W2: BAL-13~17) | feat/bal-2-w2-data-layer | PASS | 1/3 | (pending) | 2026-06-03 | W2 데이터레이어 wave-1-3-1. 3 게이트 PASS. BAL-16=R2연기. main 미머지 |
-| BAL-3 (W3: BAL-18~23) | feat/BAL-3 | PASS | 1/3 | (pending) | 2026-06-04 | M2 지표엔진. Agent Teams 슬라이스 wave A-B-C-D (단일 worktree). cov 99%, 195 passed. commit 295ed7b. main 미머지 — harness-score가 머지 SHA backfill |
+| BAL-3 (W3: BAL-18~23) | feat/BAL-3 | PASS | 1/3 | (pending) | 2026-06-04 | M2 지표엔진. Agent Teams 슬라이스 wave A-B-C-D (단일 worktree). cov 99%, 195 passed. commit 295ed7b. main 머지됨 6d23707(harness-score backfill 대상) |
+| BAL-4 (W4: BAL-24~28, +54/55) | feat/BAL-4 | PASS | 2/3 | (pending) | 2026-06-04 | M3 AI 브리핑(claude -p). Workflow 슬라이스 wave1-2-3. 222 passed. commit 294005b. iter2(Blocker 3 해소) + 보안 하드닝 4. main 미머지 — harness-score backfill |

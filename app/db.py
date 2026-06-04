@@ -9,9 +9,10 @@ upsert·백필·신선도 집계는 W2+ (Out of scope).
 """
 import dataclasses
 import sqlite3
+from datetime import date
 
 from app.config import SETTINGS_DEFAULTS  # @dataclass(frozen=True) Settings 인스턴스
-from app.models import Funda, FxRate, Headline, OHLCV, RegimeRow
+from app.models import Funda, FxRate, Headline, HoldingRow, OHLCV, RegimeRow
 
 
 def connect(db_path: str = "data/ballast.db") -> sqlite3.Connection:
@@ -307,3 +308,69 @@ def upsert_collect_run(
         (trade_date, market, status, n_ok, n_fail, missing_tickers),
     )
     conn.commit()
+
+
+# ── W3 헬퍼 (BAL-28 / 04 §10.1·§10.3) — run_briefing 파이프라인 의존물 ──
+
+def holdings(conn: sqlite3.Connection, user_id: int = 1) -> list[HoldingRow]:
+    """user_id 보유종목 전량을 HoldingRow(frozen)로. build_priced(04 §9.1) 입력. 05 §1.1."""
+    rows = conn.execute(
+        "SELECT id, user_id, asset_class, instrument, tracking, market, "
+        "canonical_ticker, name, quantity, value_manual, ccy, avg_price, "
+        "category, target_pct FROM holdings WHERE user_id = ?",
+        (user_id,),
+    ).fetchall()
+    return [
+        HoldingRow(
+            id=r["id"],
+            user_id=r["user_id"],
+            asset_class=r["asset_class"],
+            instrument=r["instrument"],
+            tracking=r["tracking"],
+            market=r["market"],
+            canonical_ticker=r["canonical_ticker"],
+            name=r["name"],
+            quantity=r["quantity"],
+            value_manual=r["value_manual"],
+            ccy=r["ccy"],
+            avg_price=r["avg_price"],
+            category=r["category"],
+            target_pct=r["target_pct"],
+        )
+        for r in rows
+    ]
+
+
+def headlines_map(conn: sqlite3.Connection) -> dict[str, list[Headline]]:
+    """canonical_ticker → 최신 거래일 헤드라인 목록(G7 뉴스 슬롯). 05 §1.6."""
+    rows = conn.execute(
+        "SELECT n.canonical_ticker AS ct, n.title, n.url, n.source "
+        "FROM news_snapshot n "
+        "JOIN (SELECT canonical_ticker, MAX(trade_date) AS td "
+        "      FROM news_snapshot GROUP BY canonical_ticker) m "
+        "  ON n.canonical_ticker = m.canonical_ticker AND n.trade_date = m.td"
+    ).fetchall()
+    out: dict[str, list[Headline]] = {}
+    for r in rows:
+        out.setdefault(r["ct"], []).append(
+            Headline(title=r["title"], url=r["url"], source=r["source"])
+        )
+    return out
+
+
+def insert_briefing(
+    conn: sqlite3.Connection, user_id: int, content_json: str, model: str
+) -> int:
+    """브리핑 이력 1건 적재(date 단독 PK 아님 — 이력 보존). lastrowid 반환. 05 §1.9."""
+    cur = conn.execute(
+        "INSERT INTO briefing (user_id, briefing_date, content_json, model) "
+        "VALUES (:user_id, :briefing_date, :content_json, :model)",
+        {
+            "user_id": user_id,
+            "briefing_date": date.today().isoformat(),
+            "content_json": content_json,
+            "model": model,
+        },
+    )
+    conn.commit()
+    return int(cur.lastrowid)

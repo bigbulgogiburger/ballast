@@ -34,6 +34,13 @@ FMP_RPS: float = 3.0
 FINNHUB_RPS: float = 1.0
 NAVER_RPS: float = 5.0
 
+# 고정 면책 문구 — 코드 상수(LLM 생성 금지, 모든 브리핑에 박힌다. 06 §1.3 / 01 AC3).
+DISCLAIMER: str = (
+    "본 브리핑은 정보 제공·교육 목적이며 투자 권유가 아닙니다. "
+    "수치는 무료 데이터 소스 기준의 참고값으로 지연·오류가 있을 수 있으며, "
+    "투자 판단과 그 결과의 책임은 이용자 본인에게 있습니다."
+)
+
 
 @dataclass(frozen=True)
 class Settings:
