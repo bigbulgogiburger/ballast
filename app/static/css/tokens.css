@@ -1,38 +1,75 @@
+/* tokens.css — 디자인 토큰 SSoT (BAL-29 / 디자인 고도화: Data-Dense 트레이딩 터미널).
+   다크 차콜 베이스 + IBM Plex(Sans KR · Mono) + 격자/모노 숫자.
+   도메인 규칙 유지: 등락 빨강(상승)/파랑(하락) — 한국 관습(SSoT §15.3). */
+
 :root {
-  /* === design.md 매핑 === */
-  --c-canvas: #f7f7f4; --c-canvas-soft: #fafaf7; --c-card: #ffffff;
-  --c-surface-strong: #e6e5e0;
-  --c-hairline: #e6e5e0; --c-hairline-soft: #efeee8; --c-hairline-strong: #cfcdc4;
-  --c-ink: #26251e; --c-body: #5a5852; --c-muted: #807d72; --c-muted-soft: #a09c92;
-  --c-primary: #0c8599; --c-primary-active: #0a6e7f; --c-on-primary: #ffffff; /* Brief Teal, §15.3 — CTA·링크·헤더는 이것만 사용 */
-  --c-success: #1f8a65; --c-error: #cf2d56;
-  --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:12px; --r-pill:9999px;
+  color-scheme: dark;
+
+  /* ── 베이스 / 패널 / 격자 (터미널 차콜) ── */
+  --c-canvas:        #0a0c10;   /* 최하단 배경 */
+  --c-canvas-soft:   #0e1117;   /* 살짝 들린 배경 */
+  --c-card:          #12161e;   /* 패널 */
+  --c-card-2:        #161b24;   /* 패널 강조(헤더행/zebra) */
+  --c-surface-strong:#1c222d;
+  --c-hairline:      #232a36;   /* 기본 격자선 */
+  --c-hairline-soft: #1a202a;   /* 약한 격자선 */
+  --c-hairline-strong:#2f3947;  /* 강조 격자선 */
+  --c-glow:          rgba(34, 211, 238, 0.06);  /* 상단 앰비언트 글로우 */
+
+  /* ── 텍스트 ── */
+  --c-ink:        #eef2f7;   /* 제목/강조 */
+  --c-body:       #c2c9d4;   /* 본문 */
+  --c-muted:      #8b93a3;   /* 보조 */
+  --c-muted-soft: #5f6775;   /* 라벨/캡션 */
+
+  /* ── 브랜드 / CTA / 링크 (Brief Teal, 다크용 상향) ── */
+  --c-primary:        #22d3ee;
+  --c-primary-active: #38e0f5;
+  --c-primary-dim:    rgba(34, 211, 238, 0.14);
+  --c-on-primary:     #051016;
+
+  /* ── 상태색 ── */
+  --c-success: #2bd4a0;   --c-success-soft: rgba(43, 212, 160, 0.12);
+  --c-error:   #ff5470;
+
+  /* ── 등락 (한국 관습: 상승=빨강 / 하락=파랑) — 다크에서 선명하게 ── */
+  --c-up:        #ff4d6d;   --c-up-soft:   rgba(255, 77, 109, 0.14);
+  --c-down:      #4d9fff;   --c-down-soft: rgba(77, 159, 255, 0.14);
+  --c-flat:      #8b93a3;
+
+  /* ── 경고 / 보류 / degrade / 정보 / 실패 ── */
+  --c-warn:    #f1b53d;   --c-warn-soft:    rgba(241, 181, 61, 0.12);
+  --c-hold:    #8b93a3;   --c-hold-soft:    rgba(139, 147, 163, 0.08);
+  --c-degrade: #a78bfa;
+  --c-info:    #22d3ee;
+  --c-fail:    #ff5470;   --c-fail-soft:    rgba(255, 84, 112, 0.10);
+
+  /* ── 자산배분 시각화 (다크 대비 강화) ── */
+  --alloc-equity: #14b8a6;   /* 주식 = teal */
+  --alloc-cash:   #475569;   /* 현금 = slate */
+  --alloc-core:   #3b82f6;   /* 코어 = blue */
+  --alloc-sat:    #f59e0b;   /* 새틀 = amber */
+
+  /* ── 라운드 (터미널은 샤프하게) ── */
+  --r-xs:2px; --r-sm:3px; --r-md:4px; --r-lg:6px; --r-pill:9999px;
+
+  /* ── 스페이싱 ── */
   --s-xxs:4px; --s-xs:8px; --s-sm:12px; --s-base:16px; --s-md:20px;
-  --s-lg:24px; --s-xl:32px; --s-xxl:48px; --s-section:80px;
-  --font-sans: Inter, system-ui, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --s-lg:24px; --s-xl:32px; --s-xxl:48px; --s-section:72px;
 
-  /* === 신규: 등락/경고 기능색 (SSoT §15.3 정본 — 한국 관습) ===
-     주의: --c-up/--c-down 은 등락 표시 전용. CTA·링크·헤더에는 절대 미사용(=--c-primary Teal 만). */
-  --c-up:   #d92d4e;   /* 상승=빨강 (move-up) */
-  --c-down: #1971c2;   /* 하락=파랑 (move-down) */
-  --c-up-soft:   #fbe6ec; --c-down-soft: #e7f0fb;
-  --c-flat: #807d72;
+  /* ── 타이포 (IBM Plex — 폴백 시스템) ── */
+  --font-sans: "IBM Plex Sans KR", Pretendard, -apple-system, BlinkMacSystemFont,
+               "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "SF Mono", ui-monospace, "JetBrains Mono",
+               Menlo, Consolas, monospace;
 
-  /* === 신규: 상태/경고 색 (02-design §2.2 정본 전량 이전, §15.3) === */
-  --c-warn: #b8740f;        --c-warn-soft: #fbf0dd;   /* 5/25·연속 fallback·한도초과 (=status-warn) */
-  --c-hold: #807d72;        --c-hold-soft: #efeee8;   /* 보류 placeholder (data_pending/fx_held) */
-  --c-degrade: #8a7fc2;                               /* warmup degrade (valuation_pctile NULL) */
-  --c-info: #0c8599;                                  /* 정보 배너(초기 적재중/BACKFILL) = primary */
-  --c-fail: #b3243f;        --c-fail-soft: #fbe6ec;   /* 처리 실패 카드(LLM 미매칭/중복, G2) */
+  /* ── 데이터 밀도 토큰 (고밀도 표) ── */
+  --density-row-h: 30px;
+  --density-fs: 12.5px;
+  --density-lh: 1.35;
 
-  /* === 신규: 자산배분 시각화 색 (timeline 파스텔 재사용 금지) === */
-  --alloc-equity:#26251e; --alloc-cash:#807d72;
-  --alloc-core:  #5a5852; --alloc-sat: #c08532;
-
-  /* === 신규: 데이터 밀도 토큰 (30종목 고밀도 표, SSoT §8) === */
-  --density-row-h: 32px;        /* 고밀도 행 높이 */
-  --density-fs: 13px;           /* 표 폰트 */
-  --density-lh: 1.35;           /* 좁은 행간 */
+  /* ── 모션 ── */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
 }
-.tabular { font-variant-numeric: tabular-nums; font-feature-settings:"tnum"; }
+
+.tabular { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }

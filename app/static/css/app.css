@@ -1,135 +1,249 @@
-/* app.css — 컴포넌트 스타일. tokens.css 변수만 참조(BAL-33). 03 §6.
-   드롭섀도 금지(hairline-only). CTA는 --c-primary(Teal)만, 등락은 --c-up/--c-down. */
+/* app.css — 컴포넌트 스타일 (BAL-33 / 디자인 고도화: Data-Dense 트레이딩 터미널).
+   tokens.css 변수만 참조. 등락 색=--c-up/--c-down(한국 관습), 숫자=--font-mono tabular. */
 
-/* ─────────────── 레이아웃 / 타이포 (design.md 톤) ─────────────── */
+/* ─────────────── 베이스 / 앰비언트 격자 배경 ─────────────── */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
 body {
   margin: 0;
   background: var(--c-canvas);
   color: var(--c-body);
   font-family: var(--font-sans);
-  line-height: 1.55;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* 미세 격자 + 상단 teal 글로우 (터미널 분위기) */
+  background-image:
+    radial-gradient(120% 60% at 50% -10%, var(--c-glow), transparent 60%),
+    linear-gradient(var(--c-hairline-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--c-hairline-soft) 1px, transparent 1px);
+  background-size: 100% 100%, 44px 44px, 44px 44px;
+  background-position: 0 0, 0 0, 0 0;
+  background-attachment: fixed;
+  min-height: 100vh;
 }
 
+.site-main,
 main {
-  max-width: 880px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: var(--s-lg) var(--s-base) var(--s-section);
 }
 
-h1,
-h2,
-h3 {
+h1 {
   color: var(--c-ink);
+  font-size: 1.15rem;
   font-weight: 600;
-  line-height: 1.3;
+  letter-spacing: -0.01em;
+  margin: 0 0 var(--s-base);
 }
 
+h2, h3 { color: var(--c-ink); font-weight: 600; line-height: 1.3; }
+
+/* 섹션 라벨 — 터미널 헤더(▌ + 모노 대문자 + letterspacing) */
 .title-sm {
-  font-size: 0.95rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-muted);
   margin: var(--s-md) 0 var(--s-xs);
+  padding-left: 10px;
+  position: relative;
+}
+.title-sm::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 0.9em;
+  background: var(--c-primary);
+  border-radius: 1px;
 }
 
-a {
-  color: var(--c-primary);
-}
+p { margin: var(--s-xs) 0; }
 
-/* ─────────────── 헤더 / 면책 ─────────────── */
+a { color: var(--c-primary); text-decoration: none; }
+a:hover { color: var(--c-primary-active); }
+
+/* ─────────────── 톱바 (풀폭 sticky 터미널 헤더) ─────────────── */
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(10, 12, 16, 0.82);
+  backdrop-filter: saturate(160%) blur(10px);
   border-bottom: 1px solid var(--c-hairline);
-  padding-bottom: var(--s-sm);
-  margin-bottom: var(--s-md);
+}
+
+.topbar {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 10px var(--s-base);
+  display: flex;
+  align-items: center;
+  gap: var(--s-md);
 }
 
 .wordmark {
-  color: var(--c-primary); /* CTA·헤더 = Teal 전용 */
+  font-family: var(--font-mono);
   font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.18em;
+  color: var(--c-ink);
+  text-transform: uppercase;
+  white-space: nowrap;
 }
+.wordmark .mark { color: var(--c-primary); margin-right: 2px; }
 
-.disclaimer-line {
+.site-nav {
+  display: flex;
+  gap: 2px;
+  margin-left: var(--s-sm);
+}
+.site-nav a {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--c-muted);
-  font-size: 0.8rem;
-  margin: var(--s-xs) 0;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.site-nav a:hover { color: var(--c-ink); background: var(--c-card); }
+
+.ticker-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s-xs);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--c-muted);
+  letter-spacing: 0.04em;
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--c-success);
+  box-shadow: 0 0 0 0 var(--c-success-soft);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(43, 212, 160, 0.5); }
+  70%  { box-shadow: 0 0 0 6px rgba(43, 212, 160, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(43, 212, 160, 0); }
+}
+.site-date { font-variant-numeric: tabular-nums; }
+
+/* ─────────────── 면책 라인 / 푸터 ─────────────── */
+.disclaimer-line {
+  max-width: 1080px;
+  margin: var(--s-sm) auto 0;
+  padding: 0 var(--s-base);
+  color: var(--c-muted-soft);
+  font-size: 0.74rem;
 }
 
 .disclaimer-footer {
   border-top: 1px solid var(--c-hairline);
   margin-top: var(--s-xl);
   padding-top: var(--s-base);
-  color: var(--c-muted);
-  font-size: 0.8rem;
+  color: var(--c-muted-soft);
+  font-size: 0.74rem;
+  line-height: 1.6;
 }
 
+/* ─────────────── 레짐 한 줄 ─────────────── */
+.regime .title-sm,
+.regime p {
+  font-family: var(--font-mono);
+  color: var(--c-body);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+.regime { margin: var(--s-sm) 0; }
+
 /* ─────────────── CTA 버튼 (Teal 전용) ─────────────── */
-.btn {
-  display: inline-block;
+.btn, .btn-primary, .btn--primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   border: 1px solid var(--c-primary);
   border-radius: var(--r-md);
   background: var(--c-primary);
   color: var(--c-on-primary);
-  padding: 0 var(--s-base);
-  min-height: 40px;
-  line-height: 40px;
-  font-size: 0.9rem;
+  padding: 0 var(--s-md);
+  min-height: 38px;
   cursor: pointer;
+  transition: background 0.15s var(--ease), box-shadow 0.15s var(--ease);
 }
-
-.btn:hover {
+.btn:hover, .btn-primary:hover, .btn--primary:hover {
   background: var(--c-primary-active);
   border-color: var(--c-primary-active);
+  box-shadow: 0 0 0 3px var(--c-primary-dim);
 }
-
 .btn--ghost {
   background: transparent;
   color: var(--c-primary);
 }
 
-/* ─────────────── 배지 (신선도, §4.2) ─────────────── */
+/* ─────────────── 칩 / 배지 (신선도 등) ─────────────── */
 .badge-row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-xs);
   margin: var(--s-sm) 0;
 }
-
 .badge {
-  display: inline-block;
-  border: 1px solid var(--c-hairline);
-  border-radius: var(--r-pill);
-  padding: 2px var(--s-sm);
-  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  border: 1px solid var(--c-hairline-strong);
+  border-radius: var(--r-sm);
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
   color: var(--c-body);
   background: var(--c-card);
 }
-
 .badge--fresh {
   color: var(--c-success);
-  border-color: var(--c-success);
+  border-color: color-mix(in srgb, var(--c-success) 45%, transparent);
+  background: var(--c-success-soft);
 }
-
-.badge--stale {
-  color: var(--c-muted);
-  border-color: var(--c-hairline-strong);
-}
-
+.badge--stale { color: var(--c-muted); border-color: var(--c-hairline-strong); }
 .badge--warn {
   color: var(--c-warn);
-  border-color: var(--c-warn);
+  border-color: color-mix(in srgb, var(--c-warn) 50%, transparent);
   background: var(--c-warn-soft);
 }
 
-/* ─────────────── 경고 / 배너 블록 ─────────────── */
+/* ─────────────── 경고 / 정보 배너 ─────────────── */
 .warn-block {
-  border: 1px solid var(--c-warn);
+  border: 1px solid color-mix(in srgb, var(--c-warn) 45%, transparent);
+  border-left: 3px solid var(--c-warn);
   border-radius: var(--r-md);
   background: var(--c-warn-soft);
   color: var(--c-warn);
   padding: var(--s-xs) var(--s-sm);
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   margin: var(--s-xs) 0;
 }
-
 .banner-info {
-  border: 1px solid var(--c-info);
+  border: 1px solid color-mix(in srgb, var(--c-info) 40%, transparent);
+  border-left: 3px solid var(--c-info);
   border-radius: var(--r-md);
   background: var(--c-card);
   color: var(--c-info);
@@ -137,169 +251,233 @@ a {
   margin: var(--s-sm) 0;
 }
 
-/* ─────────────── 자산배분 누적 바 (§5, flex + width%) ─────────────── */
-.alloc {
-  margin: var(--s-md) 0;
-}
-
+/* ─────────────── 자산배분 누적 바 ─────────────── */
+.alloc { margin: var(--s-md) 0; }
 .stack-bar {
   display: flex;
   width: 100%;
-  height: 28px;
+  height: 30px;
   border: 1px solid var(--c-hairline);
   border-radius: var(--r-sm);
   overflow: hidden;
   margin-bottom: var(--s-xs);
+  background: var(--c-card);
 }
-
 .stack-seg {
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 0;
   overflow: hidden;
+  border-right: 1px solid rgba(10, 12, 16, 0.45);
+  transition: filter 0.15s var(--ease);
 }
-
+.stack-seg:last-child { border-right: 0; }
+.stack-seg:hover { filter: brightness(1.12); }
 .seg-label {
-  color: var(--c-card);
-  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: #04110f;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   padding: 0 var(--s-xxs);
   text-overflow: ellipsis;
   overflow: hidden;
 }
 
-/* ─────────────── 종목 카드 (요약뷰 펼침/접힘) ─────────────── */
+/* ─────────────── 종목 패널 (요약뷰 펼침/접힘) ─────────────── */
+.securities { display: flex; flex-direction: column; gap: 6px; }
+
 .sec-card {
   border: 1px solid var(--c-hairline);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
   background: var(--c-card);
-  margin: var(--s-xs) 0;
-  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.15s var(--ease);
 }
+.sec-card:hover { border-color: var(--c-hairline-strong); }
+.sec-card[open] { border-color: var(--c-hairline-strong); }
 
-.sec-card > summary {
+.sec-card > summary,
+.sec-card-head {
   list-style: none;
   cursor: pointer;
-  padding: var(--s-sm) var(--s-base);
+  padding: 9px var(--s-base);
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--s-sm);
 }
-
-.sec-card > summary::-webkit-details-marker {
-  display: none;
+.sec-card > summary::-webkit-details-marker { display: none; }
+.sec-card > summary::before {
+  content: "▸";
+  color: var(--c-muted-soft);
+  font-size: 0.7rem;
+  transition: transform 0.15s var(--ease);
 }
+.sec-card[open] > summary::before { transform: rotate(90deg); color: var(--c-primary); }
 
 .sec-name {
   color: var(--c-ink);
   font-weight: 600;
+  font-size: 0.92rem;
 }
+/* summary 내 비중 숫자 우측 정렬 */
+.sec-card > summary .num,
+.sec-card-head .num {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--c-body);
+  font-size: 0.82rem;
+}
+.sec-card > summary .badge { margin-left: 0; }
 
 .sec-body {
-  padding: 0 var(--s-base) var(--s-sm);
+  padding: var(--s-xs) var(--s-base) var(--s-sm);
   border-top: 1px solid var(--c-hairline-soft);
+  background: var(--c-canvas-soft);
 }
-
+.sec-body p { color: var(--c-body); font-size: 0.9rem; }
 .sec-points {
   margin: var(--s-xs) 0 0;
-  padding-left: var(--s-md);
+  padding-left: 0;
+  list-style: none;
+}
+.sec-points li {
+  position: relative;
+  padding-left: 16px;
+  font-size: 0.86rem;
+  color: var(--c-body);
+  margin: 3px 0;
+}
+.sec-points li::before {
+  content: "→";
+  position: absolute; left: 0;
+  color: var(--c-primary);
+  font-family: var(--font-mono);
 }
 
-/* placeholder 카드(보류: data_pending / fx_held / warmup) */
+/* 보류 placeholder 패널 */
 .sec-card--placeholder {
   background: var(--c-hold-soft);
   border-color: var(--c-hairline-strong);
+  padding: 9px var(--s-base);
 }
-
-.sec-card--placeholder .sec-name {
-  color: var(--c-hold);
-}
-
+.sec-card--placeholder .sec-name { color: var(--c-hold); }
 .placeholder {
   color: var(--c-hold);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-style: italic;
 }
+.sec-card-head .placeholder { margin-left: auto; }
 
-/* fail 카드(LLM 미매칭/처리 실패, G2) */
+/* 실패 패널 */
 .sec-card--fail {
   background: var(--c-fail-soft);
-  border-color: var(--c-fail);
+  border-color: color-mix(in srgb, var(--c-fail) 45%, transparent);
+  padding: 9px var(--s-base);
 }
+.sec-card--fail .sec-name { color: var(--c-fail); }
 
-.sec-card--fail .sec-name {
-  color: var(--c-fail);
+/* ─────────────── 등락 표기 (모노 + 색 + 부호, §7) ─────────────── */
+.move-up, .move-down, .move-flat {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
 }
+.move-up::before   { content: "▲ "; font-size: 0.7em; }
+.move-down::before { content: "▼ "; font-size: 0.7em; }
+.move-up   { color: var(--c-up); }
+.move-down { color: var(--c-down); }
+.move-flat { color: var(--c-flat); }
 
-/* ─────────────── 등락 표기 (색 + 부호 병기, §7) ─────────────── */
-.move-up {
-  color: var(--c-up);
-}
-
-.move-down {
-  color: var(--c-down);
-}
-
-.move-flat {
-  color: var(--c-flat);
-}
-
-/* ─────────────── 밀도 표 (30종목 고밀도, tabular-nums) ─────────────── */
+/* ─────────────── 고밀도 표 (격자 + 모노 tabular) ─────────────── */
 .density {
   width: 100%;
   border-collapse: collapse;
+  font-family: var(--font-mono);
   font-size: var(--density-fs);
   line-height: var(--density-lh);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
+  margin: var(--s-xs) 0;
 }
-
 .density th,
 .density td {
   height: var(--density-row-h);
-  padding: 0 var(--s-xs);
+  padding: 0 10px;
   border-bottom: 1px solid var(--c-hairline-soft);
+  border-right: 1px solid var(--c-hairline-soft);
   text-align: right;
+  color: var(--c-body);
 }
-
+.density th:last-child, .density td:last-child { border-right: 0; }
 .density th {
   color: var(--c-muted);
   font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--c-card-2);
+  border-bottom-color: var(--c-hairline);
 }
-
 .density td:first-child,
-.density th:first-child {
-  text-align: left;
-}
+.density th:first-child { text-align: left; color: var(--c-ink); }
+.density tr:hover td { background: var(--c-card-2); }
 
 .num {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
 
-/* ─────────────── 폼 / 테이블 ─────────────── */
+/* ─────────────── 폼 / 입력 (터미널 인풋) ─────────────── */
+input, select {
+  font-family: var(--font-mono);
+  font-size: 0.84rem;
+  color: var(--c-ink);
+  background: var(--c-canvas-soft);
+  border: 1px solid var(--c-hairline-strong);
+  border-radius: var(--r-sm);
+  padding: 6px 8px;
+  width: 100%;
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
+}
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--c-primary);
+  box-shadow: 0 0 0 3px var(--c-primary-dim);
+}
+input:disabled, select:disabled {
+  color: var(--c-muted-soft);
+  background: var(--c-card);
+  border-color: var(--c-hairline);
+  cursor: not-allowed;
+}
+select option { background: var(--c-card); color: var(--c-ink); }
+
 .field-error {
+  font-family: var(--font-mono);
   color: var(--c-error);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   margin: var(--s-xxs) 0;
 }
 
 .empty-state {
   color: var(--c-muted);
-  padding: var(--s-lg);
+  padding: var(--s-xl);
   text-align: center;
   border: 1px dashed var(--c-hairline-strong);
   border-radius: var(--r-lg);
+  background: var(--c-card);
 }
 
-/* ─────────────── holdings.html (BAL-31) 참조 컴포넌트 ─────────────── */
+/* ─────────────── holdings.html — 편집 테이블 ─────────────── */
 .sr-only {
   position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -308,38 +486,90 @@ a {
 
 .holdings-table {
   width: 100%;
+  border: 1px solid var(--c-hairline);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-bottom: var(--s-base);
 }
-
+.holdings-table th { white-space: nowrap; }
 .holdings-table td,
-.holdings-table th {
-  vertical-align: middle;
-}
-
-.btn-primary {
-  color: var(--c-on-primary);
-  background: var(--c-primary); /* CTA = Teal 전용 */
-  border-color: var(--c-primary);
-}
-
-.btn-primary:hover {
-  background: var(--c-primary-active);
-  border-color: var(--c-primary-active);
-}
+.holdings-table th { vertical-align: middle; }
+.holdings-table td { padding: 4px 6px; }
+.holdings-table input,
+.holdings-table select { min-width: 64px; }
 
 .form-errors {
+  font-family: var(--font-mono);
   color: var(--c-fail);
   background: var(--c-fail-soft);
-  border: 1px solid var(--c-fail);
+  border: 1px solid color-mix(in srgb, var(--c-fail) 45%, transparent);
+  border-left: 3px solid var(--c-fail);
   border-radius: var(--r-md);
   padding: var(--s-sm) var(--s-base);
   margin-bottom: var(--s-base);
+  font-size: 0.84rem;
+}
+.form-errors ul { margin: 0; padding-left: var(--s-base); }
+
+/* 저장 성공 배너 */
+.banner-success,
+.banner--success {
+  font-family: var(--font-mono);
+  color: var(--c-success) !important;
+  background: var(--c-success-soft);
+  border: 1px solid color-mix(in srgb, var(--c-success) 45%, transparent);
+  border-left: 3px solid var(--c-success);
+  border-radius: var(--r-md);
+  padding: var(--s-sm) var(--s-base);
+  margin-bottom: var(--s-base);
+  font-size: 0.84rem;
+}
+.banner--error {
+  font-family: var(--font-mono);
+  color: var(--c-error);
+  background: var(--c-fail-soft);
+  border: 1px solid color-mix(in srgb, var(--c-fail) 45%, transparent);
+  border-left: 3px solid var(--c-error);
+  border-radius: var(--r-md);
+  padding: var(--s-sm) var(--s-base);
+  margin-bottom: var(--s-base);
+  font-size: 0.84rem;
 }
 
-.banner-success {
-  color: var(--c-success);
-  background: var(--c-canvas-soft);
-  border: 1px solid var(--c-success);
-  border-radius: var(--r-md);
-  padding: var(--s-sm) var(--s-base);
-  margin-bottom: var(--s-base);
+/* ─────────────── settings.html — 설정 폼 ─────────────── */
+.settings-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--s-base);
+  max-width: 720px;
+  margin-top: var(--s-base);
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-muted);
+}
+.settings-form .btn,
+.settings-form .btn--primary { grid-column: 1 / -1; justify-self: start; }
+
+/* ─────────────── 진입 모션 (섹션 stagger) ─────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .site-main > section,
+  .site-main > footer,
+  .holdings > *,
+  .settings > * {
+    animation: rise 0.5s var(--ease) both;
+  }
+  .site-main > section:nth-child(2) { animation-delay: 0.04s; }
+  .site-main > section:nth-child(3) { animation-delay: 0.08s; }
+  .site-main > section:nth-child(4) { animation-delay: 0.12s; }
+  .site-main > section:nth-child(5) { animation-delay: 0.16s; }
+  .site-main > section:nth-child(6) { animation-delay: 0.20s; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 }
