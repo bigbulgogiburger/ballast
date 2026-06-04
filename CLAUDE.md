@@ -15,13 +15,15 @@ graph TD
     COLLECT[collect.py 일배치]; DB[(db.py · SQLite 9테이블)]
     TICK[tickers.py]; CAL[calendar.py]; MODELS[models.py DTO]
   end
-  subgraph Consume["W3 (스텁)"]
-    MET[metrics/]; BRIEF[briefing.py LLM]; MAIN[main.py FastAPI/Jinja2]
+  subgraph Consume["지표·브리핑 (W3·W4 구현 / main.py=W5 스텁)"]
+    MET[metrics/ priced·portfolio·security·gate]; BRIEF[briefing.py 조립]; MAIN[main.py FastAPI/Jinja2]
+    LLM[llm.py ClaudeCLIClient]; SCH[schemas.py]; PR[prompts/briefing.md]
   end
   KR & US & FX & RG --> COLLECT --> DB
   GUARD --> KR & US & FX & RG
   COLLECT --> TICK & CAL
   DB --> MET --> BRIEF --> MAIN
+  SCH & LLM & PR --> BRIEF
 ```
 
 ### Domain Modules
@@ -31,14 +33,16 @@ graph TD
 | `app/collect.py` | 일배치 — 수집·적재·collect_run 게이트 |
 | `app/db.py` | SQLite 연결/스키마/조회·적재 헬퍼 |
 | `app/tickers.py`·`calendar.py` | 티커 정규화 · 거래일(XKRX/XNYS) |
-| `app/models.py` | frozen DTO (OHLCV·Funda·Headline·RegimeRow·FxRate) |
-| `app/metrics/`·`briefing.py`·`main.py` | 계산·LLM·웹 (W3, 스텁) |
+| `app/models.py` | frozen DTO (OHLCV·Funda·Headline·RegimeRow·FxRate + §15.2 SecurityCard·BriefingDoc·PricedHolding·SecurityLLMOut·HoldExcluded) |
+| `app/metrics/` | 지표 엔진 — priced(통화정규화)·portfolio(5/25)·security(밸류)·gate(신선도) (W3·BAL-3) |
+| `app/briefing.py`·`llm.py`·`schemas.py` | AI 브리핑 — claude -p 어댑터·스키마·run/assemble (숫자는 코드 주입) (W4·BAL-4) |
+| `app/main.py` | FastAPI/Jinja2 웹 (W5, 스텁) |
 
 ## Commands
 ```bash
 source .venv/bin/activate
 uvicorn app.main:app --host 127.0.0.1 --port 8000   # 127.0.0.1 전용
-pytest -q                                            # 테스트 (138)
+pytest -q                                            # 테스트 (222)
 ruff check app/ tests/                               # 린트 (커밋 전)
 ```
 
@@ -50,6 +54,7 @@ ruff check app/ tests/                               # 린트 (커밋 전)
 - **NEVER fx 결측 시 분모 제외** — 산출 거부(0/NULL 위장 금지).
 - **NEVER 제공자 PER/PBR 자체 재계산** — 제공자 계산값만 캐시.
 - **NEVER SQL을 문자열 연결로** — `?`/named param 바인딩만(named param=컬럼 전체명).
+- **NEVER LLM이 숫자·면책 생성** — 숫자는 `{placeholder}`만(RAW_NUMBER 린트 reject, 코드가 주입), 면책은 코드 상수(`config.DISCLAIMER`). 보류 종목(hold_status≠'ok')은 LLM 미호출.
 
 ## Git Conventions
 - 커밋: `<type>(BAL-N): <설명>` (feat/fix/test/docs/chore). base/기본 브랜치 = **`master`가 아니라 `main`** (remote: github.com/bigbulgogiburger/ballast).
@@ -69,9 +74,9 @@ ruff check app/ tests/                               # 린트 (커밋 전)
 | 일배치 | collect·게이트·백필 | `.claude/docs/reference/data-collection.md` |
 | 테스트 규약 | 테스트 추가 | `.claude/docs/reference/testing.md` |
 | 설계 SoT(정본) | 요구·백엔드·DB·AI | `docs/01-product-spec.md` · `04-backend.md` · `05-database.md` · `06-ai-agent.md` |
-| 마일스톤 계획 | wave·결정 | `docs/BAL-{1,2}-*-orchestration.md` · `*-decisions.md` |
+| 마일스톤 dev-guide | wave·슬라이스·결정 | `docs/BAL-{N}-dev-guide.md`(BAL-3·4) · `BAL-{1,2}-*-orchestration.md`·`*-decisions.md` |
 
 > ⚠️ `TECH-DESIGN.md`는 레포에 없음 — `docs/04·05·01`이 정본.
 
 ---
-Last Updated: 2026-06-03
+Last Updated: 2026-06-04 (W3 지표엔진 BAL-3 · W4 AI브리핑 BAL-4 구현·main 머지)
