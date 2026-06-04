@@ -237,10 +237,11 @@ def run_securities(
     """배치분할 LLM 호출 + ct조인 + 슬롯주입 + 린트. 06 §5.2.
 
     보류(hold_status != 'ok') 종목은 live 필터로 제외 → LLM 미호출(G3/G6).
+    현금(canonical_ticker=None)도 분석 대상이 아니므로 제외 → assemble가 'ok' 값 카드로 렌더.
     린트/슬롯/LLM 실패 시 해당 배치 1회 재호출, 재실패 시 그 종목 failed 카드.
     수치는 절대 안 건드림 — 최종 SecurityCard 수치주입은 assemble_briefing 소유.
     """
-    live = [s for s in items if s.hold_status == "ok"]
+    live = [s for s in items if s.hold_status == "ok" and s.canonical_ticker is not None]
     outs: list[SecurityLLMOut] = []
     failed: list[HoldExcluded] = []
     for i in range(0, len(live), BATCH):
@@ -367,8 +368,9 @@ def build_security_card(
     v = m.valuation
     t = m.trend
     if llm_out is None:
-        # 보류(data_pending/fx_held/warmup)는 상태 유지, ok인데 LLM 누락이면 failed.
-        status = m.status if m.status != "ok" else "failed"
+        # 현금(분석 대상 아님)은 'ok' 값 카드로 유지, 보류(data_pending/fx_held/warmup)도 상태 유지.
+        # 주식/ETF가 ok인데 LLM 누락이면 failed.
+        status = "failed" if (m.status == "ok" and m.instrument != "cash") else m.status
         comment = trend_note = ""
         points: list[str] = []
     else:

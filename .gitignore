@@ -15,3 +15,5 @@ logs/
 .claude/runtime/workflow-state.json
 .claude/runtime/aggregate-verdict.md
 .claude/runtime/agent-outputs/
+e2e-screenshots/
+scripts/seed_demo.py
