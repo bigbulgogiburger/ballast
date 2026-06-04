@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}설정 · Ballast{% endblock %}
+
+{% block content %}
+<section class="settings">
+  <h1>설정</h1>
+
+  {% if request.query_params.get('saved') %}
+  <p class="banner banner--success" role="status">저장되었습니다.</p>
+  {% endif %}
+
+  {% if errors %}
+  <p class="banner banner--error" role="alert">입력값을 확인해 주세요.</p>
+  {% endif %}
+
+  <form method="post" action="/settings" class="settings-form">
+    <div class="field">
+      <label for="base_currency">기준 통화</label>
+      <select id="base_currency" name="base_currency">
+        <option value="KRW" {% if settings.get('base_currency') == 'KRW' %}selected{% endif %}>KRW</option>
+        <option value="USD" {% if settings.get('base_currency') == 'USD' %}selected{% endif %}>USD</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="monthly_contribution">월 적립액 (KRW)</label>
+      <input type="number" id="monthly_contribution" name="monthly_contribution"
+             step="1" min="0" value="{{ settings.get('monthly_contribution', '') }}">
+    </div>
+
+    <div class="field">
+      <label for="satellite_limit_pct">위성 비중 상한 (%)</label>
+      <input type="number" id="satellite_limit_pct" name="satellite_limit_pct"
+             step="1" min="0" max="100" value="{{ settings.get('satellite_limit_pct', '') }}">
+    </div>
+
+    <div class="field">
+      <label for="rebalance_band_abs">리밸런싱 밴드 — 절대 (%p)</label>
+      <input type="number" id="rebalance_band_abs" name="rebalance_band_abs"
+             step="1" min="0" value="{{ settings.get('rebalance_band_abs', '') }}">
+    </div>
+
+    <div class="field">
+      <label for="rebalance_band_rel">리밸런싱 밴드 — 상대 (%)</label>
+      <input type="number" id="rebalance_band_rel" name="rebalance_band_rel"
+             step="1" min="0" value="{{ settings.get('rebalance_band_rel', '') }}">
+    </div>
+
+    <div class="field">
+      <label for="micro_weight_floor">미세 비중 하한 (%)</label>
+      <input type="number" id="micro_weight_floor" name="micro_weight_floor"
+             step="0.1" min="0" value="{{ settings.get('micro_weight_floor', '') }}">
+    </div>
+
+    <div class="field">
+      <label for="usd_cash_gate_threshold">USD 현금 게이트 임계 (%)</label>
+      <input type="number" id="usd_cash_gate_threshold" name="usd_cash_gate_threshold"
+             step="0.1" min="0" value="{{ settings.get('usd_cash_gate_threshold', '') }}">
+    </div>
+
+    <button type="submit" class="btn btn--primary">저장</button>
+  </form>
+</section>
+{% endblock %}

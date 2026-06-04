@@ -1,0 +1,38 @@
+:root {
+  /* === design.md 매핑 === */
+  --c-canvas: #f7f7f4; --c-canvas-soft: #fafaf7; --c-card: #ffffff;
+  --c-surface-strong: #e6e5e0;
+  --c-hairline: #e6e5e0; --c-hairline-soft: #efeee8; --c-hairline-strong: #cfcdc4;
+  --c-ink: #26251e; --c-body: #5a5852; --c-muted: #807d72; --c-muted-soft: #a09c92;
+  --c-primary: #0c8599; --c-primary-active: #0a6e7f; --c-on-primary: #ffffff; /* Brief Teal, §15.3 — CTA·링크·헤더는 이것만 사용 */
+  --c-success: #1f8a65; --c-error: #cf2d56;
+  --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:12px; --r-pill:9999px;
+  --s-xxs:4px; --s-xs:8px; --s-sm:12px; --s-base:16px; --s-md:20px;
+  --s-lg:24px; --s-xl:32px; --s-xxl:48px; --s-section:80px;
+  --font-sans: Inter, system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* === 신규: 등락/경고 기능색 (SSoT §15.3 정본 — 한국 관습) ===
+     주의: --c-up/--c-down 은 등락 표시 전용. CTA·링크·헤더에는 절대 미사용(=--c-primary Teal 만). */
+  --c-up:   #d92d4e;   /* 상승=빨강 (move-up) */
+  --c-down: #1971c2;   /* 하락=파랑 (move-down) */
+  --c-up-soft:   #fbe6ec; --c-down-soft: #e7f0fb;
+  --c-flat: #807d72;
+
+  /* === 신규: 상태/경고 색 (02-design §2.2 정본 전량 이전, §15.3) === */
+  --c-warn: #b8740f;        --c-warn-soft: #fbf0dd;   /* 5/25·연속 fallback·한도초과 (=status-warn) */
+  --c-hold: #807d72;        --c-hold-soft: #efeee8;   /* 보류 placeholder (data_pending/fx_held) */
+  --c-degrade: #8a7fc2;                               /* warmup degrade (valuation_pctile NULL) */
+  --c-info: #0c8599;                                  /* 정보 배너(초기 적재중/BACKFILL) = primary */
+  --c-fail: #b3243f;        --c-fail-soft: #fbe6ec;   /* 처리 실패 카드(LLM 미매칭/중복, G2) */
+
+  /* === 신규: 자산배분 시각화 색 (timeline 파스텔 재사용 금지) === */
+  --alloc-equity:#26251e; --alloc-cash:#807d72;
+  --alloc-core:  #5a5852; --alloc-sat: #c08532;
+
+  /* === 신규: 데이터 밀도 토큰 (30종목 고밀도 표, SSoT §8) === */
+  --density-row-h: 32px;        /* 고밀도 행 높이 */
+  --density-fs: 13px;           /* 표 폰트 */
+  --density-lh: 1.35;           /* 좁은 행간 */
+}
+.tabular { font-variant-numeric: tabular-nums; font-feature-settings:"tnum"; }

@@ -12,7 +12,15 @@ import sqlite3
 from datetime import date
 
 from app.config import SETTINGS_DEFAULTS  # @dataclass(frozen=True) Settings 인스턴스
-from app.models import Funda, FxRate, Headline, HoldingRow, OHLCV, RegimeRow
+from app.models import (
+    BriefingDoc,
+    Funda,
+    FxRate,
+    Headline,
+    HoldingRow,
+    OHLCV,
+    RegimeRow,
+)
 
 
 def connect(db_path: str = "data/ballast.db") -> sqlite3.Connection:
@@ -356,6 +364,77 @@ def headlines_map(conn: sqlite3.Connection) -> dict[str, list[Headline]]:
             Headline(title=r["title"], url=r["url"], source=r["source"])
         )
     return out
+
+
+# ── W5 헬퍼 (BAL-32 / 03 §1·§4) — 프론트엔드 라우트 영속화 의존물 ──
+
+
+def save_holdings(
+    conn: sqlite3.Connection, rows: list[HoldingRow], user_id: int = 1
+) -> None:
+    """user_id 보유종목을 검증된 rows로 전량 교체(category 영속화·G4). 기존 행 DELETE 후 INSERT."""
+    conn.execute("DELETE FROM holdings WHERE user_id = ?", (user_id,))
+    for r in rows:
+        conn.execute(
+            "INSERT INTO holdings "
+            "(user_id, asset_class, instrument, tracking, market, canonical_ticker, "
+            "name, quantity, value_manual, ccy, avg_price, category, target_pct) "
+            "VALUES (:user_id, :asset_class, :instrument, :tracking, :market, "
+            ":canonical_ticker, :name, :quantity, :value_manual, :ccy, :avg_price, "
+            ":category, :target_pct)",
+            {
+                "user_id": user_id,
+                "asset_class": r.asset_class,
+                "instrument": r.instrument,
+                "tracking": r.tracking,
+                "market": r.market,
+                "canonical_ticker": r.canonical_ticker,
+                "name": r.name,
+                "quantity": r.quantity,
+                "value_manual": r.value_manual,
+                "ccy": r.ccy,
+                "avg_price": r.avg_price,
+                "category": r.category,
+                "target_pct": r.target_pct,
+            },
+        )
+    conn.commit()
+
+
+def load_latest_briefing(
+    conn: sqlite3.Connection, user_id: int = 1
+) -> "BriefingDoc | None":
+    """user_id 최신 브리핑 1건(MAX(created_at))을 BriefingDoc으로. 0건→None. 05 §1.9 / 03 §1."""
+    row = conn.execute(
+        "SELECT content_json FROM briefing WHERE user_id = ? "
+        "ORDER BY created_at DESC, id DESC LIMIT 1",
+        (user_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    return BriefingDoc.from_json(row["content_json"])
+
+
+def get_settings(conn: sqlite3.Connection, user_id: int = 1) -> dict:
+    """user_id 설정 전량을 {key: value(TEXT)} dict로. §15.5 키. 05 §1.4."""
+    rows = conn.execute(
+        "SELECT key, value FROM settings WHERE user_id = ?",
+        (user_id,),
+    ).fetchall()
+    return {r["key"]: r["value"] for r in rows}
+
+
+def save_settings(
+    conn: sqlite3.Connection, values: dict, user_id: int = 1
+) -> None:
+    """설정 값 upsert(키별 ON CONFLICT DO UPDATE). 저장형 TEXT. named param. 05 §1.4."""
+    for key, value in values.items():
+        conn.execute(
+            "INSERT INTO settings (user_id, key, value) VALUES (:user_id, :key, :value) "
+            "ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value",
+            {"user_id": user_id, "key": key, "value": str(value)},
+        )
+    conn.commit()
 
 
 def insert_briefing(

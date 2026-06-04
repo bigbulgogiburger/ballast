@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{#- holdings.html — 보유자산 입력/편집 폼 (BAL-31). 03 §2.
+   서버 검증이 SoT(F5): 실패 시 400 + 동일 폼 + 에러 재렌더(상태 보존).
+   JS 없이 동작 — instrument별 활성/비활성은 서버 렌더 시점 정적 분기.
+   고정 N행(8) + 빈 행 1개(신규). 모든 input <label for>, 에러 aria-describedby + role=alert. -#}
+
+{#- 표시값 helper: 실패 재렌더(form 우선) → 기존 행(rows) → 빈 값.
+    form/rows 길이가 다를 수 있어 인덱스로 안전 접근. -#}
+{% set n_fixed = 8 %}
+{% set total_rows = (form | length) if form else (rows | length) %}
+{% set n = [total_rows + 1, n_fixed] | max %}
+
+{#- 행별 에러 조회: row_index == i 인 FieldError 리스트 -#}
+{% macro row_errors(i) %}{% if errors %}{% for e in errors if e.row_index == i %}{{ e.message }}{% if not loop.last %} / {% endif %}{% endfor %}{% endif %}{% endmacro %}
+
+{% block content %}
+<main class="holdings">
+  <h1>보유자산 입력</h1>
+
+  {% if request.query_params.get('saved') == '1' %}
+  <p class="banner-success" role="status" style="color: var(--c-success);">저장되었습니다.</p>
+  {% endif %}
+
+  {#- 폼 전역 에러(row_index == -1): target 배타·합계 등 -#}
+  {% set global_errors = errors | selectattr('row_index', 'equalto', -1) | list if errors else [] %}
+  {% if global_errors %}
+  <div class="form-errors" role="alert">
+    <ul>
+      {% for e in global_errors %}<li>{{ e.message }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if total_rows == 0 and not errors %}
+  <p class="empty-state">보유 자산을 추가하세요. 아래 빈 행에 입력 후 저장하면 됩니다.</p>
+  {% endif %}
+
+  <form method="post" action="/holdings">
+    <table class="density holdings-table">
+      <caption class="sr-only">보유자산 편집 테이블</caption>
+      <thead>
+        <tr>
+          <th scope="col">유형</th>
+          <th scope="col">종목코드</th>
+          <th scope="col">시장</th>
+          <th scope="col">수량</th>
+          <th scope="col">평가액(달러예금)</th>
+          <th scope="col">통화</th>
+          <th scope="col">평단(참고)</th>
+          <th scope="col">구분</th>
+          <th scope="col">목표비중 %</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for i in range(n) %}
+        {#- 표시 소스: 실패 재렌더면 form[i], 아니면 정규화된 rows[i] -#}
+        {% set f = form[i] if (form and i < (form | length)) else None %}
+        {% set r = rows[i] if (not form and rows and i < (rows | length)) else None %}
+        {% set v_instrument = f.instrument if f else (r.instrument if r else '') %}
+        {% set v_ticker = f.canonical_ticker if f else (r.canonical_ticker if r else '') %}
+        {% set v_market = f.market if f else (r.market if r else '') %}
+        {% set v_quantity = f.quantity if f else (r.quantity if r else '') %}
+        {% set v_value = f.value_manual if f else (r.value_manual if r else '') %}
+        {% set v_ccy = f.ccy if f else (r.ccy if r else '') %}
+        {% set v_avg = f.avg_price if f else (r.avg_price if r else '') %}
+        {% set v_category = f.category if f else (r.category if r else '') %}
+        {% set v_target = f.target_pct if f else (r.target_pct if r else '') %}
+        {% set is_cash = (v_instrument == 'cash') %}
+        {% set err_id = 'err-row-' ~ i %}
+        {% set has_err = errors and (errors | selectattr('row_index', 'equalto', i) | list | length > 0) %}
+        <tr>
+          <td>
+            <label for="instrument-{{ i }}" class="sr-only">행 {{ i + 1 }} 유형</label>
+            <select id="instrument-{{ i }}" name="rows[{{ i }}][instrument]"
+                    {% if has_err %}aria-describedby="{{ err_id }}"{% endif %}>
+              <option value="" {% if not v_instrument %}selected{% endif %}>—</option>
+              <option value="stock" {% if v_instrument == 'stock' %}selected{% endif %}>개별주</option>
+              <option value="etf" {% if v_instrument == 'etf' %}selected{% endif %}>ETF</option>
+              <option value="cash" {% if is_cash %}selected{% endif %}>달러예금</option>
+            </select>
+          </td>
+          <td>
+            <label for="ticker-{{ i }}" class="sr-only">행 {{ i + 1 }} 종목코드</label>
+            <input id="ticker-{{ i }}" type="text" name="rows[{{ i }}][canonical_ticker]"
+                   value="{{ v_ticker or '' }}"
+                   {% if is_cash %}disabled aria-disabled="true"{% endif %}>
+          </td>
+          <td>
+            <label for="market-{{ i }}" class="sr-only">행 {{ i + 1 }} 시장</label>
+            <select id="market-{{ i }}" name="rows[{{ i }}][market]"
+                    {% if is_cash %}disabled aria-disabled="true"{% endif %}>
+              <option value="" {% if not v_market %}selected{% endif %}>—</option>
+              <option value="KR" {% if v_market == 'KR' %}selected{% endif %}>KR</option>
+              <option value="US" {% if v_market == 'US' %}selected{% endif %}>US</option>
+            </select>
+          </td>
+          <td>
+            <label for="quantity-{{ i }}" class="sr-only">행 {{ i + 1 }} 수량</label>
+            <input id="quantity-{{ i }}" type="number" step="any" min="0"
+                   name="rows[{{ i }}][quantity]" value="{{ v_quantity or '' }}"
+                   {% if is_cash %}disabled aria-disabled="true"{% endif %}>
+          </td>
+          <td>
+            <label for="value-{{ i }}" class="sr-only">행 {{ i + 1 }} 평가액</label>
+            <input id="value-{{ i }}" type="number" step="any" min="0"
+                   name="rows[{{ i }}][value_manual]" value="{{ v_value or '' }}"
+                   {% if not is_cash %}disabled aria-disabled="true"{% endif %}>
+          </td>
+          <td>
+            <label for="ccy-{{ i }}" class="sr-only">행 {{ i + 1 }} 통화</label>
+            <select id="ccy-{{ i }}" name="rows[{{ i }}][ccy]">
+              <option value="" {% if not v_ccy %}selected{% endif %}>—</option>
+              <option value="KRW" {% if v_ccy == 'KRW' %}selected{% endif %}>KRW</option>
+              <option value="USD" {% if v_ccy == 'USD' %}selected{% endif %}>USD</option>
+            </select>
+          </td>
+          <td>
+            <label for="avg-{{ i }}" class="sr-only">행 {{ i + 1 }} 평단</label>
+            <input id="avg-{{ i }}" type="number" step="any" min="0"
+                   name="rows[{{ i }}][avg_price]" value="{{ v_avg or '' }}"
+                   {% if is_cash %}disabled aria-disabled="true"{% endif %}>
+          </td>
+          <td>
+            <label for="category-{{ i }}" class="sr-only">행 {{ i + 1 }} 구분</label>
+            <select id="category-{{ i }}" name="rows[{{ i }}][category]"
+                    {% if is_cash %}disabled aria-disabled="true"{% endif %}>
+              <option value="" {% if not v_category %}selected{% endif %}>자동</option>
+              <option value="core" {% if v_category == 'core' %}selected{% endif %}>코어</option>
+              <option value="satellite" {% if v_category == 'satellite' %}selected{% endif %}>새틀</option>
+            </select>
+          </td>
+          <td>
+            <label for="target-{{ i }}" class="sr-only">행 {{ i + 1 }} 목표비중</label>
+            <input id="target-{{ i }}" type="number" step="0.1" min="0" max="100"
+                   name="rows[{{ i }}][target_pct]" value="{{ v_target or '' }}">
+          </td>
+        </tr>
+        {% set msg = row_errors(i) | trim %}
+        {% if msg %}
+        <tr>
+          <td colspan="9">
+            <p id="{{ err_id }}" class="field-error" role="alert">{{ msg }}</p>
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <button type="submit" class="btn btn-primary">저장</button>
+  </form>
+</main>
+{% endblock %}
