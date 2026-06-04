@@ -36,13 +36,13 @@ graph TD
 | `app/models.py` | frozen DTO (OHLCV·Funda·Headline·RegimeRow·FxRate + §15.2 SecurityCard·BriefingDoc·PricedHolding·SecurityLLMOut·HoldExcluded) |
 | `app/metrics/` | 지표 엔진 — priced(통화정규화)·portfolio(5/25)·security(밸류)·gate(신선도) (W3·BAL-3) |
 | `app/briefing.py`·`llm.py`·`schemas.py` | AI 브리핑 — claude -p 어댑터·스키마·run/assemble (숫자는 코드 주입) (W4·BAL-4) |
-| `app/main.py` | FastAPI/Jinja2 웹 (W5, 스텁) |
+| `app/main.py`·`holdings_form.py`·`templates/`·`static/` | FastAPI/Jinja2 웹 — 라우트 4종·보유입력 검증·30초 스캔 대시보드·신선도 배지·자산배분 stack-bar (W5·BAL-5) |
 
 ## Commands
 ```bash
 source .venv/bin/activate
 uvicorn app.main:app --host 127.0.0.1 --port 8000   # 127.0.0.1 전용
-pytest -q                                            # 테스트 (222)
+pytest -q                                            # 테스트 (252)
 ruff check app/ tests/                               # 린트 (커밋 전)
 ```
 
@@ -79,4 +79,4 @@ ruff check app/ tests/                               # 린트 (커밋 전)
 > ⚠️ `TECH-DESIGN.md`는 레포에 없음 — `docs/04·05·01`이 정본.
 
 ---
-Last Updated: 2026-06-04 (W3 지표엔진 BAL-3 · W4 AI브리핑 BAL-4 구현·main 머지)
+Last Updated: 2026-06-04 (W3 지표엔진 BAL-3 · W4 AI브리핑 BAL-4 · W5 프론트엔드 BAL-5(BAL-29~33) 구현·main 머지)
