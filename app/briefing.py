@@ -42,6 +42,7 @@ logger = logging.getLogger(__name__)
 
 _MODEL = "claude-sonnet-4-5"
 BATCH = 10
+WHY_MOVE_THRESHOLD = 3.0  # |전일대비 %| 이 값 이상 + 헤드라인 보유 → 변동 귀인(why_note) 요청
 
 # ─────────────────────────── 06 §3·§4 정규식 ───────────────────────────
 SLOT = re.compile(r"\{([a-z0-9_]+)\}")
@@ -72,6 +73,7 @@ class SecurityInput:
     trend_pos_52w: str
     eps_trend: str
     headlines: list[dict]                  # [{title,url,source}] 본문없음(G7)
+    why_needed: bool = False               # 코드 판정 — 큰 변동 + 헤드라인 보유 시 귀인 요청
 
 
 @dataclass(frozen=True)
@@ -150,13 +152,14 @@ def _lint_and_inject(out: SecurityLLMOut, slots: dict[str, str]) -> SecurityLLMO
     raw로 오탐하므로 금지. 실패 시 LintError 전파.
     """
     lint(
-        "\n".join([out.comment, out.trend_note, *out.investment_points])
+        "\n".join([out.comment, out.trend_note, out.why_note, *out.investment_points])
     )
     return SecurityLLMOut(
         canonical_ticker=out.canonical_ticker,
         comment=inject(out.comment, slots),
         trend_note=inject(out.trend_note, slots),
         investment_points=[inject(p, slots) for p in out.investment_points],
+        why_note=inject(out.why_note, slots),
     )
 
 
@@ -181,6 +184,14 @@ def build_security_prompt(batch: list[SecurityInput]) -> str:
             title = str(h.get("title", "")).replace("\n", " ").replace("\r", " ")[:100]
             source = str(h.get("source", "")).replace("\n", " ").replace("\r", " ")[:40]
             lines.append(f"  헤드라인: {title} ({source})")
+        if s.why_needed:
+            lines.append(
+                "  변동 귀인: 전일 대비 변동 {change_pct}가 큽니다 — 위 헤드라인에 "
+                "근거가 있으면 why_note에 변동 사유를 1문장으로 쓰고, 근거가 없으면 "
+                "빈 문자열로 두세요."
+            )
+        else:
+            lines.append("  변동 귀인: 불필요 — why_note는 빈 문자열로 두세요.")
         slot_keys = ", ".join(f"{{{k}}}" for k in s.slots)
         lines.append(f"  사용 가능한 placeholder: {slot_keys}")
     return "\n".join(lines)
@@ -220,6 +231,7 @@ def assemble_llm_outs(
             comment=item.get("comment", ""),
             trend_note=item.get("trend_note", ""),
             investment_points=list(item.get("investment_points", [])),
+            why_note=item.get("why_note", ""),
         )
         outs.append(_lint_and_inject(raw, s.slots))
 
@@ -331,6 +343,11 @@ def build_security_inputs(
                 trend_pos_52w=_fmt(_pct100(m.trend.week52_pos), "%"),
                 eps_trend="flat",  # EPS 추세 산출은 W3 범위 밖(BAL-23) — 중립 고정
                 headlines=headlines,
+                why_needed=(
+                    m.change_pct is not None
+                    and abs(m.change_pct) >= WHY_MOVE_THRESHOLD
+                    and bool(headlines)
+                ),
             )
         )
     return inputs
@@ -371,13 +388,14 @@ def build_security_card(
         # 현금(분석 대상 아님)은 'ok' 값 카드로 유지, 보류(data_pending/fx_held/warmup)도 상태 유지.
         # 주식/ETF가 ok인데 LLM 누락이면 failed.
         status = "failed" if (m.status == "ok" and m.instrument != "cash") else m.status
-        comment = trend_note = ""
+        comment = trend_note = why_note = ""
         points: list[str] = []
     else:
         status = m.status
         comment = llm_out.comment
         trend_note = llm_out.trend_note
         points = llm_out.investment_points
+        why_note = llm_out.why_note
     return SecurityCard(
         canonical_ticker=m.canonical_ticker,
         name=m.name,
@@ -400,6 +418,7 @@ def build_security_card(
         comment=comment,
         trend_note=trend_note,
         investment_points=points,
+        why_note=why_note,
     )
 
 
@@ -485,6 +504,19 @@ def _security_trend(conn: sqlite3.Connection, ct: str | None) -> sec.TrendLabel:
     if row is None:
         return sec.TrendLabel(None, None)
     return sec.trend(_ohlcv_from_row(row))
+
+
+def _change_pct(conn: sqlite3.Connection, ct: str | None) -> float | None:
+    """전일대비 등락률(%) — 최신 2거래일 close_adj 기준. 2건 미만/0분모 → None(0 위장 금지)."""
+    if ct is None:
+        return None
+    rows = db.last_two_closes(conn, ct)
+    if len(rows) < 2:
+        return None
+    latest, prev = rows[0]["close_adj"], rows[1]["close_adj"]
+    if latest is None or prev is None or prev == 0:
+        return None
+    return (latest - prev) / prev * 100.0
 
 
 def _latest_regime(conn: sqlite3.Connection) -> sqlite3.Row | None:
@@ -575,7 +607,7 @@ def _build_metrics(
                 asset_class=h.asset_class,
                 category=h.category,
                 status=p.status,
-                change_pct=None,  # 전일대비는 prev_close 미확보(MVP) → None
+                change_pct=_change_pct(conn, ct),  # 최신 2거래일 close_adj 기준
                 current_pct=cur_pct,
                 target_pct=targets.get(ct) if ct is not None else None,
                 drift=drift_res.per_group.get(grp),

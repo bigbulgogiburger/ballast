@@ -338,6 +338,15 @@ a:hover { color: var(--c-primary-active); }
   background: var(--c-canvas-soft);
 }
 .sec-body p { color: var(--c-body); font-size: 0.9rem; }
+
+/* 변동 귀인(why_note) — 큰 변동의 사유 1문장 강조 */
+.why-note {
+  border-left: 3px solid var(--c-info);
+  background: var(--c-card);
+  border-radius: var(--r-sm);
+  padding: var(--s-xxs) var(--s-sm);
+  color: var(--c-ink) !important;
+}
 .sec-points {
   margin: var(--s-xs) 0 0;
   padding-left: 0;

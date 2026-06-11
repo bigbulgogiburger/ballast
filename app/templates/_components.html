@@ -93,6 +93,7 @@
     {% if card.rebalance_flag %}<span class="badge badge--warn">리밸런싱</span>{% endif %}
   </summary>
   <div class="sec-body">
+    {% if card.why_note %}<p class="why-note">{{ card.why_note }}</p>{% endif %}
     <p>{{ card.comment }}</p>
     <table class="density">
       <tr>

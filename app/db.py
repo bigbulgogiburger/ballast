@@ -179,6 +179,15 @@ def latest_price(conn: sqlite3.Connection, ct: str) -> sqlite3.Row | None:
     ).fetchone()
 
 
+def last_two_closes(conn: sqlite3.Connection, ct: str) -> list[sqlite3.Row]:
+    """canonical_ticker별 최신 2거래일 close_adj(전일대비 산출용). 0~2건. 05 §3.1."""
+    return conn.execute(
+        "SELECT trade_date, close_adj FROM price_snapshot "
+        "WHERE canonical_ticker = ? ORDER BY trade_date DESC LIMIT 2",
+        (ct,),
+    ).fetchall()
+
+
 def latest_funda(conn: sqlite3.Connection, ct: str) -> sqlite3.Row | None:
     """canonical_ticker별 최신 펀더 1행. 0건→None. 05 §3.2."""
     return conn.execute(
