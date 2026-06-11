@@ -135,6 +135,7 @@ class SecurityLLMOut:
     comment: str
     trend_note: str
     investment_points: list[str]
+    why_note: str = ""         # 변동 귀인(헤드라인 근거 1문장) — 큰 변동 없으면 빈 문자열
 
 
 @dataclass(frozen=True)
@@ -162,6 +163,7 @@ class SecurityCard:
     comment: str               # ↓ LLM(SecurityLLMOut) 머지
     trend_note: str
     investment_points: list[str]
+    why_note: str = ""         # 변동 귀인 — 기본값으로 구버전 content_json 역직렬화 호환
 
 
 @dataclass(frozen=True)

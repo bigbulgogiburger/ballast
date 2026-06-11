@@ -118,6 +118,72 @@ def test_run_briefing_happy_path(monkeypatch, _no_connect):
 
 
 @pytest.mark.unit
+def test_run_briefing_success_sends_alert(monkeypatch, _no_connect):
+    """성공 시 최신 브리핑 요약(banner 우선·플래그 수)으로 send_briefing_alert 호출."""
+    from app.models import BriefingDoc, SecurityCard
+
+    def _card(rebalance_flag: bool) -> SecurityCard:
+        return SecurityCard(
+            canonical_ticker="005930", name="삼성전자", instrument="stock",
+            asset_class="equity", category="core", change_pct=None,
+            current_pct=50.0, target_pct=50.0, drift=0.0,
+            rebalance_flag=rebalance_flag, per=None, pbr=None, div_yield=None,
+            valuation_pctile=None, valuation_label="중립", week52_pos=None,
+            sma200_gap=None, status="ok", comment="", trend_note="",
+            investment_points=[],
+        )
+
+    doc = BriefingDoc(
+        briefing_date="2026-06-11", model="m", created_at="2026-06-11",
+        banner=None, regime_label="중립 레짐", as_of={}, asset_allocation={},
+        securities=[_card(True), _card(False), _card(True)],
+        holds_excluded=[], dca={}, portfolio_comment={}, disclaimer="d",
+    )
+    monkeypatch.setattr(briefing, "run_briefing", lambda conn, llm: 1)
+    monkeypatch.setattr(run_briefing, "make_llm_client", lambda: _FakeLLMClient())
+    monkeypatch.setattr(db, "load_latest_briefing", lambda conn: doc)
+    alerts: list = []
+    monkeypatch.setattr(
+        run_briefing.notify, "send_briefing_alert",
+        lambda headline, flag_count: alerts.append((headline, flag_count)),
+    )
+
+    assert run_briefing.main() == 0
+    assert alerts == [("중립 레짐", 2)]
+
+
+@pytest.mark.unit
+def test_run_briefing_alert_failure_keeps_exit_0(monkeypatch, _no_connect):
+    """알림 경로 예외는 best-effort — 배치 exit code를 오염시키지 않음."""
+    monkeypatch.setattr(briefing, "run_briefing", lambda conn, llm: 1)
+    monkeypatch.setattr(run_briefing, "make_llm_client", lambda: _FakeLLMClient())
+
+    def _boom(conn):
+        raise RuntimeError("db crash")
+
+    monkeypatch.setattr(db, "load_latest_briefing", _boom)
+    assert run_briefing.main() == 0
+
+
+@pytest.mark.unit
+def test_run_briefing_failure_no_alert(monkeypatch, _no_connect):
+    """run_briefing 예외 → 알림 미발송."""
+    def _boom(conn, llm):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(briefing, "run_briefing", _boom)
+    monkeypatch.setattr(run_briefing, "make_llm_client", lambda: _FakeLLMClient())
+    alerts: list = []
+    monkeypatch.setattr(
+        run_briefing.notify, "send_briefing_alert",
+        lambda headline, flag_count: alerts.append(headline),
+    )
+
+    assert run_briefing.main() == 1
+    assert alerts == []
+
+
+@pytest.mark.unit
 def test_run_briefing_exception_returns_1(monkeypatch, _no_connect):
     """run_briefing 예외 → exit code 1, conn은 close."""
     def _boom(conn, llm):

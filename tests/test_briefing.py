@@ -442,3 +442,140 @@ def test_assemble_held_not_in_holds_excluded_only_g2() -> None:
     assert by["005930"].status == "data_pending"  # 보류 status 보존
     assert "005930" not in {h.canonical_ticker for h in doc.holds_excluded}  # 보류는 미등재
     assert doc.holds_excluded == failed  # G2(llm_unmatched)만 holds_excluded
+
+
+# ───────── 변동 귀인(why_note) — Level 1 ─────────
+def _sec_input_why(*, why_needed: bool = True) -> briefing.SecurityInput:
+    """change_pct 슬롯 + 헤드라인 보유 SecurityInput (why_note 검증용)."""
+    return briefing.SecurityInput(
+        canonical_ticker="005930",
+        name="삼성전자",
+        market="KR",
+        hold_status="ok",
+        slots={"per": "12.0", "pos_52w": "80.0%", "change_pct": "+5.2%"},
+        valuation_band="중립",
+        valuation_warmup=False,
+        per=12.0,
+        trend_pos_52w="80.0%",
+        eps_trend="flat",
+        headlines=[{"title": "신제품 발표", "url": "https://x", "source": "테스트"}],
+        why_needed=why_needed,
+    )
+
+
+@pytest.mark.unit
+def test_prompt_why_needed_includes_attribution_instruction() -> None:
+    prompt = briefing.build_security_prompt([_sec_input_why(why_needed=True)])
+    assert "변동 귀인: 전일 대비 변동" in prompt
+    assert "why_note" in prompt
+
+
+@pytest.mark.unit
+def test_prompt_why_not_needed_says_empty() -> None:
+    prompt = briefing.build_security_prompt([_sec_input_why(why_needed=False)])
+    assert "변동 귀인: 불필요" in prompt
+
+
+@pytest.mark.unit
+def test_why_note_slot_injected() -> None:
+    item = _sec_item("005930")
+    item["why_note"] = "신제품 발표 영향으로 {change_pct} 움직임이 나왔습니다."
+    client = FakeLLMClient([_sec_resp(item)])
+    outs, failed = briefing.run_securities(client, [_sec_input_why()])
+    assert failed == []
+    assert outs[0].why_note == "신제품 발표 영향으로 +5.2% 움직임이 나왔습니다."
+
+
+@pytest.mark.unit
+def test_why_note_raw_number_rejected_after_retry() -> None:
+    item = _sec_item("005930")
+    item["why_note"] = "전일 5.2% 급변했습니다."  # 슬롯 밖 raw 숫자 → lint reject
+    client = FakeLLMClient([_sec_resp(item), _sec_resp(item)])  # 재호출도 동일 실패
+    outs, failed = briefing.run_securities(client, [_sec_input_why()])
+    assert outs == []
+    assert [(h.canonical_ticker, h.reason) for h in failed] == [("005930", "failed")]
+
+
+@pytest.mark.unit
+def test_why_note_absent_in_response_defaults_empty() -> None:
+    client = FakeLLMClient([_sec_resp(_sec_item("005930"))])  # why_note 키 없음
+    outs, _ = briefing.run_securities(client, [_sec_input_why()])
+    assert outs[0].why_note == ""
+
+
+@pytest.mark.unit
+def test_build_security_inputs_why_needed_flag() -> None:
+    import dataclasses
+
+    from app.models import Headline
+
+    big = dataclasses.replace(_metric("005930"), change_pct=5.0)
+    small = dataclasses.replace(_metric("000660"), change_pct=1.0)
+    no_news = dataclasses.replace(_metric("035420"), change_pct=-8.0)
+    news = {
+        "005930": [Headline(title="t", url="u", source="s")],
+        "000660": [Headline(title="t", url="u", source="s")],
+    }
+    inputs = briefing.build_security_inputs(_bundle(big, small, no_news), news)
+    by = {i.canonical_ticker: i for i in inputs}
+    assert by["005930"].why_needed is True       # 큰 변동 + 헤드라인
+    assert by["000660"].why_needed is False      # 변동 작음
+    assert by["035420"].why_needed is False      # 헤드라인 없음
+
+
+@pytest.mark.unit
+def test_assemble_card_carries_why_note() -> None:
+    from app.models import SecurityLLMOut
+
+    out = SecurityLLMOut(
+        canonical_ticker="005930", comment="c", trend_note="t",
+        investment_points=[], why_note="신제품 발표 영향입니다.",
+    )
+    doc = briefing.assemble_briefing(_bundle(_metric()), [out], [], {}, _gate())
+    assert doc.securities[0].why_note == "신제품 발표 영향입니다."
+
+
+@pytest.mark.unit
+def test_briefingdoc_from_json_old_card_without_why_note() -> None:
+    from app.models import BriefingDoc
+
+    doc = briefing.assemble_briefing(_bundle(_metric()), [], [], {}, _gate())
+    import json as _json
+
+    d = _json.loads(doc.to_json())
+    for c in d["securities"]:
+        c.pop("why_note")  # 구버전 content_json 시뮬레이션
+    loaded = BriefingDoc.from_json(_json.dumps(d, ensure_ascii=False))
+    assert loaded.securities[0].why_note == ""
+
+
+# ───────── 전일대비(change_pct) 산출 ─────────
+def _price_row(trade_date: str, close_adj: float):
+    from app.models import OHLCV
+
+    return OHLCV(
+        canonical_ticker="005930", trade_date=trade_date, close_raw=close_adj,
+        close_adj=close_adj, ccy="KRW", week52_high=None, week52_low=None, sma200=None,
+    )
+
+
+@pytest.mark.unit
+def test_change_pct_from_last_two_closes(conn) -> None:
+    from app import db
+
+    db.upsert_price(conn, _price_row("2026-06-09", 100.0))
+    db.upsert_price(conn, _price_row("2026-06-10", 105.0))
+    assert briefing._change_pct(conn, "005930") == pytest.approx(5.0)
+
+
+@pytest.mark.unit
+def test_change_pct_single_row_none(conn) -> None:
+    from app import db
+
+    db.upsert_price(conn, _price_row("2026-06-10", 105.0))
+    assert briefing._change_pct(conn, "005930") is None
+
+
+@pytest.mark.unit
+def test_change_pct_none_ticker_none(conn) -> None:
+    assert briefing._change_pct(conn, None) is None

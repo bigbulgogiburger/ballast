@@ -20,7 +20,27 @@ def send_fail_alert(market: str, reason: str) -> None:
     reason은 호출측에서 시크릿(예외 원문·API 키 포함 URL)을 넣지 않는 고정 문자열이어야 한다.
     방어적으로 200자 절단(알림 본문 비대·렌더링 깨짐 방지).
     """
-    text = f"[Ballast] {market} 수집 실패: {reason[:200]}"
+    if not _broadcast(f"[Ballast] {market} 수집 실패: {reason[:200]}"):
+        log.warning("notify: no channel configured, skipping alert for %s", market)
+
+
+def send_briefing_alert(headline: str, flag_count: int) -> None:
+    """브리핑 생성 성공 시 1회 알림 — 헤드라인 1줄 + 리밸런싱 플래그 개수 + 대시보드 링크.
+
+    headline은 코드가 고른 문자열(banner 또는 regime_label)만 — LLM 자유텍스트 금지.
+    링크는 로컬 전용이라 기본 127.0.0.1, 외부 접근 환경(Tailscale 등)은 env로 교체.
+    """
+    url = os.environ.get("BALLAST_DASHBOARD_URL", "http://127.0.0.1:8000/")
+    text = (
+        f"[Ballast] 오늘의 브리핑 도착 — {headline[:100]} · "
+        f"리밸런싱 플래그 {flag_count}건 · {url}"
+    )
+    if not _broadcast(text):
+        log.warning("notify: no channel configured, skipping briefing alert")
+
+
+def _broadcast(text: str) -> bool:
+    """설정된 전 채널로 발송. 하나라도 시도했으면 True(미설정 False)."""
     sent = False
     ntfy_url = os.environ.get("NTFY_URL")
     if ntfy_url:
@@ -33,8 +53,7 @@ def send_fail_alert(market: str, reason: str) -> None:
         body = urllib.parse.urlencode({"chat_id": chat_id, "text": text}).encode("utf-8")
         _post(url, body, "telegram", "application/x-www-form-urlencoded")
         sent = True
-    if not sent:
-        log.warning("notify: no channel configured, skipping alert for %s", market)
+    return sent
 
 
 def _post(url: str, data: bytes, channel: str, content_type: str | None) -> None:

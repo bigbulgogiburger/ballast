@@ -34,6 +34,9 @@ ruff check app/ tests/         # 린트 (커밋 전 필수)
 | Yale CAPE | `regime._cape_from_yale/_cape_from_multpl` |
 | pykrx 지수 | `regime.stock.get_index_fundamental` |
 | collect E2E | `KrSource/UsSource/FxSource/RegimeProvider` 클래스 메서드 + `collect.calendar.*`. `db.connect`는 no-close 프록시로 conn 주입 |
+| LLM | `FakeLLMClient`(canned structured_output) — 실 claude CLI 절대 호출 금지. CLI 어댑터는 `llm_mod.subprocess.run` 스텁 |
+| notify | `notify.urllib.request.urlopen` monkeypatch + env(`NTFY_URL` 등) setenv/delenv |
+| 라우트 | `fastapi.testclient.TestClient` + `config.DB_PATH`를 tmp_path로 monkeypatch(실 DB 오염 방지) |
 
 ## 커버리지 우선순위 (harness-review가 점검)
 
@@ -41,4 +44,4 @@ happy path + 폴백 분기 + 빈응답→EmptyResponseError + degrade(None) + �
 
 ## 현재 상태
 
-138 tests (unit 134 + integration 4). `sqlite3.Connection`은 C타입이라 인스턴스 메서드 monkeypatch 불가 → 위임 프록시 사용(test_collect E2E 참고).
+335 tests (2026-06-11, Level 1 포함). `sqlite3.Connection`은 C타입이라 인스턴스 메서드 monkeypatch 불가 → 위임 프록시 사용(test_collect E2E 참고).

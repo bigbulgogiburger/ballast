@@ -101,6 +101,48 @@ def test_http_error_swallowed(monkeypatch):
     notify.send_fail_alert("KR", "x")  # 예외 전파되면 안 됨
 
 
+# ── 브리핑 도착 알림 (send_briefing_alert) ──
+@pytest.mark.unit
+def test_briefing_alert_posts_summary(captured, monkeypatch):
+    _clear_env(monkeypatch)
+    monkeypatch.setenv("NTFY_URL", "https://ntfy.sh/ballast")
+    notify.send_briefing_alert("중립 레짐", 2)
+    assert len(captured) == 1
+    req, _ = captured[0]
+    body = req.data.decode("utf-8")
+    assert "브리핑 도착" in body
+    assert "중립 레짐" in body
+    assert "2건" in body
+    assert "http://127.0.0.1:8000/" in body
+
+
+@pytest.mark.unit
+def test_briefing_alert_dashboard_url_env_override(captured, monkeypatch):
+    _clear_env(monkeypatch)
+    monkeypatch.setenv("NTFY_URL", "https://ntfy.sh/ballast")
+    monkeypatch.setenv("BALLAST_DASHBOARD_URL", "https://my.tailnet/")
+    notify.send_briefing_alert("중립 레짐", 0)
+    req, _ = captured[0]
+    assert b"https://my.tailnet/" in req.data
+
+
+@pytest.mark.unit
+def test_briefing_alert_headline_truncated(captured, monkeypatch):
+    _clear_env(monkeypatch)
+    monkeypatch.setenv("NTFY_URL", "https://ntfy.sh/ballast")
+    notify.send_briefing_alert("가" * 300, 0)
+    req, _ = captured[0]
+    assert ("가" * 100).encode("utf-8") in req.data
+    assert ("가" * 101).encode("utf-8") not in req.data
+
+
+@pytest.mark.unit
+def test_briefing_alert_no_channel_noop(captured, monkeypatch):
+    _clear_env(monkeypatch)
+    notify.send_briefing_alert("중립 레짐", 1)
+    assert captured == []
+
+
 # ── collect.py FAIL 분기 → send_fail_alert 호출 ──
 _TODAY = date(2026, 6, 3)
 _EXPECTED = date(2026, 6, 2)

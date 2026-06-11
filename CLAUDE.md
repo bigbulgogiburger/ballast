@@ -15,15 +15,20 @@ graph TD
     COLLECT[collect.py 일배치]; DB[(db.py · SQLite 9테이블)]
     TICK[tickers.py]; CAL[calendar.py]; MODELS[models.py DTO]
   end
-  subgraph Consume["지표·브리핑 (W3·W4 구현 / main.py=W5 스텁)"]
-    MET[metrics/ priced·portfolio·security·gate]; BRIEF[briefing.py 조립]; MAIN[main.py FastAPI/Jinja2]
+  subgraph Consume["지표·브리핑·웹 (W3~W6 구현 완료)"]
+    MET[metrics/ priced·portfolio·security·gate]; BRIEF[briefing.py 조립+why_note]; MAIN[main.py FastAPI/Jinja2]
     LLM[llm.py ClaudeCLIClient]; SCH[schemas.py]; PR[prompts/briefing.md]
+  end
+  subgraph Ops["무인운영 (W6)"]
+    SCRIPTS[scripts/ 진입점]; PLIST[ops/ launchd 08:00·08:30]; NOTIFY[notify.py 푸시]
   end
   KR & US & FX & RG --> COLLECT --> DB
   GUARD --> KR & US & FX & RG
   COLLECT --> TICK & CAL
   DB --> MET --> BRIEF --> MAIN
   SCH & LLM & PR --> BRIEF
+  PLIST --> SCRIPTS --> COLLECT & BRIEF
+  SCRIPTS --> NOTIFY
 ```
 
 ### Domain Modules
@@ -35,14 +40,15 @@ graph TD
 | `app/tickers.py`·`calendar.py` | 티커 정규화 · 거래일(XKRX/XNYS) |
 | `app/models.py` | frozen DTO (OHLCV·Funda·Headline·RegimeRow·FxRate + §15.2 SecurityCard·BriefingDoc·PricedHolding·SecurityLLMOut·HoldExcluded) |
 | `app/metrics/` | 지표 엔진 — priced(통화정규화)·portfolio(5/25)·security(밸류)·gate(신선도) (W3·BAL-3) |
-| `app/briefing.py`·`llm.py`·`schemas.py` | AI 브리핑 — claude -p 어댑터·스키마·run/assemble (숫자는 코드 주입) (W4·BAL-4) |
-| `app/main.py`·`holdings_form.py`·`templates/`·`static/` | FastAPI/Jinja2 웹 — 라우트 4종·보유입력 검증·30초 스캔 대시보드·신선도 배지·자산배분 stack-bar (W5·BAL-5) |
+| `app/briefing.py`·`llm.py`·`schemas.py` | AI 브리핑 — claude -p 어댑터·스키마·run/assemble (숫자는 코드 주입)·변동 귀인 why_note (W4·BAL-4 + L1) |
+| `app/main.py`·`holdings_form.py`·`templates/`·`static/` | FastAPI/Jinja2 웹 — 라우트 4종·보유입력 검증·30초 스캔 대시보드·신선도 배지·자산배분 stack-bar·모바일·출처 표기 (W5·BAL-5 + L1) |
+| `scripts/`·`ops/`·`app/notify.py` | 무인운영 — launchd 08:00/08:30·백필 핸드오프(G9)·수집 FAIL/브리핑 도착 푸시 (W6·BAL-6 + L1) |
 
 ## Commands
 ```bash
 source .venv/bin/activate
 uvicorn app.main:app --host 127.0.0.1 --port 8000   # 127.0.0.1 전용
-pytest -q                                            # 테스트 (252)
+pytest -q                                            # 테스트 (335)
 ruff check app/ tests/                               # 린트 (커밋 전)
 ```
 
@@ -72,9 +78,14 @@ ruff check app/ tests/                               # 린트 (커밋 전)
 | 어댑터 패턴 | 새 소스·폴백·재시도 | `.claude/docs/reference/source-adapters.md` |
 | DB 스키마·헬퍼 | 테이블·쿼리·upsert | `.claude/docs/reference/database.md` |
 | 일배치 | collect·게이트·백필 | `.claude/docs/reference/data-collection.md` |
+| 지표 엔진 | 통화정규화·5/25·밸류·게이트 | `.claude/docs/reference/metrics.md` |
+| AI 브리핑 | 슬롯주입·린트·ct join·why_note·LLM 어댑터 | `.claude/docs/reference/ai-briefing.md` |
+| 프론트엔드 | 라우트·템플릿·CSS·모바일·폼 검증 | `.claude/docs/reference/frontend.md` |
+| 무인운영 | launchd·진입점·알림·백필 핸드오프 | `.claude/docs/reference/operations.md` |
 | 테스트 규약 | 테스트 추가 | `.claude/docs/reference/testing.md` |
 | 설계 SoT(정본) | 요구·백엔드·DB·AI | `docs/01-product-spec.md` · `04-backend.md` · `05-database.md` · `06-ai-agent.md` |
-| 마일스톤 dev-guide | wave·슬라이스·결정 | `docs/BAL-{N}-dev-guide.md`(BAL-3·4·5) · `BAL-{1,2}-*-orchestration.md`·`*-decisions.md` |
+| 마일스톤 dev-guide | wave·슬라이스·결정 | `docs/BAL-{N}-dev-guide.md`(BAL-3~6) · `BAL-{1,2}-*-orchestration.md`·`*-decisions.md` |
+| 제품 비전·로드맵 | Level 2+ 기획·벤치마킹 | `docs/PRODUCT-VISION-NEXT-LEVEL.md` |
 | Wiki Index | 착수 시 관련 이슈·dev-guide·상태 조회 | `docs/INDEX.md` |
 | Wiki Log | ingest 이벤트 로그 (append-only) | `docs/LOG.md` |
 | Wiki Schema | wiki 카테고리·정책 (사용자 편집) | `docs/INDEX-SCHEMA.md` |
@@ -83,4 +94,4 @@ ruff check app/ tests/                               # 린트 (커밋 전)
 > 📚 새 dev-guide 작성/완료 시 INDEX/LOG 자동 갱신(jira-plan/jira-complete chain). 누락 시 `/jira-ingest <KEY>`.
 
 ---
-Last Updated: 2026-06-04 (W3 지표엔진 BAL-3 · W4 AI브리핑 BAL-4 · W5 프론트엔드 BAL-5(BAL-29~33) 구현·main 머지)
+Last Updated: 2026-06-11 (W6 무인운영 BAL-6 완료 · Level 1: 브리핑 푸시·모바일·why_note·출처 UI · reference 9개 재구성)
