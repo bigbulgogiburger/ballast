@@ -76,7 +76,22 @@
   {% endif %}
 </section>
 
-{# ⑦ 면책 푸터 #}
+{# ⑦ 데이터 기준일·출처 (정직성 가시화 — 모든 수치의 근거 시점) #}
+<section class="data-sources">
+  <h2 class="title-sm">데이터 기준</h2>
+  <p class="source-line">
+    기준일 — 시세 <span class="num">{{ doc.as_of.price or '미확보' }}</span>
+    · 펀더멘털 <span class="num">{{ doc.as_of.funda or '미확보' }}</span>
+    · 환율 <span class="num">{{ doc.as_of.fx or '미확보' }}</span>
+  </p>
+  <p class="source-line">
+    출처 — KR 시세·펀더 pykrx / 공시 DART / 뉴스 네이버 ·
+    US 시세 Stooq·yfinance / 펀더 FMP / 재무 SEC / 뉴스 Finnhub ·
+    환율 ECB · 레짐 KOSPI PBR·Shiller CAPE
+  </p>
+</section>
+
+{# ⑧ 면책 푸터 #}
 <footer class="disclaimer-footer">
   {{ doc.disclaimer }}
 </footer>

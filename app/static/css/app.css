@@ -150,6 +150,17 @@ a:hover { color: var(--c-primary-active); }
   font-size: 0.74rem;
 }
 
+/* 데이터 기준일·출처 (정직성 가시화) */
+.data-sources { margin-top: var(--s-lg); }
+.source-line {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--c-muted-soft);
+  letter-spacing: 0.02em;
+  margin: 2px 0;
+}
+.source-line .num { color: var(--c-muted); }
+
 .disclaimer-footer {
   border-top: 1px solid var(--c-hairline);
   margin-top: var(--s-xl);
