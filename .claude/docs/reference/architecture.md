@@ -2,48 +2,49 @@
 
 > 참조 시점: 새 모듈 추가, 데이터 흐름 이해, seam 계약 확인. SoT = `docs/04-backend.md`/`docs/05-database.md`.
 
-## 레이어
+## 레이어 (W1~W6 전량 구현 완료)
 
 ```
-sources/ (어댑터)  →  collect.py (배치 오케스트레이터)  →  db.py (SQLite 영속)
-                                                              ↓
-                                       metrics/ → briefing.py (LLM) → main.py (FastAPI/Jinja2)
+sources/ (어댑터)  →  collect.py (일배치 08:00)  →  db.py (SQLite 9테이블)
+                                                       ↓
+                metrics/ (priced·portfolio·security·gate)
+                                                       ↓
+                briefing.py + llm.py (08:30, claude -p)  →  main.py (FastAPI/Jinja2)
+                                                       ↓
+                notify.py (수집 FAIL · 브리핑 도착 푸시)
 ```
 
 - **sources/** — 외부 무료 데이터 어댑터. Protocol 구현, 종목 단위 격리. (`source-adapters.md`)
-- **collect.py** — 일배치. auto 보유종목을 돌며 어댑터 호출 → db 적재 + `collect_run` 게이트 기록. (`data-collection.md`)
-- **db.py** — SQLite 연결/스키마/조회·적재 헬퍼. 9테이블. (`database.md`)
-- **metrics/** — portfolio/security 계산 (W3 범위, 현재 스텁).
-- **briefing.py** — LLM 브리핑 생성 (W3 범위).
-- **main.py** — FastAPI 엔드포인트 + Jinja2 렌더.
+- **collect.py** — 일배치 + `collect_run` 게이트 기록. (`data-collection.md`)
+- **db.py** — 연결/스키마/조회·적재 헬퍼. (`database.md`)
+- **metrics/** — 5종 지표 + 신선도 게이트. (`metrics.md`)
+- **briefing.py·llm.py·schemas.py** — LLM 브리핑(슬롯주입·린트·why_note). (`ai-briefing.md`)
+- **main.py·templates/·static/** — 웹 대시보드. (`frontend.md`)
+- **scripts/·ops/·notify.py** — 무인운영·스케줄·알림. (`operations.md`)
 
 ## 모듈 인벤토리
 
 | 모듈 | 책임 | 상태 |
 |------|------|------|
-| `app/models.py` | DTO (HoldingInput·OHLCV·Funda·Headline·RegimeRow·FxRate, frozen) | W1+W2 구현 |
-| `app/db.py` | connect/init_schema/latest_*/upsert_*/auto_holdings | W1+W2 구현 |
-| `app/tickers.py` | to_source 변환·CORE_ETF_WHITELIST·classify_category | W1 구현 |
-| `app/calendar.py` | 거래일(XKRX/XNYS) is_trading_day/prev/expected | W1 구현 |
-| `app/sources/__init__.py` | 공통 가드: EmptyResponseError·retry·validate_response | W2 구현 |
-| `app/sources/kr.py` | KR 어댑터(pykrx/FDR/네이버) | W1 구현 |
-| `app/sources/us.py` | US 어댑터(Stooq→yfinance→Finnhub/FMP/SEC) | W2 구현 |
-| `app/sources/fx.py` | FX(USDKRW) 어댑터(ECB→yfinance) | W2 구현 |
-| `app/sources/regime.py` | 레짐(kospi_pbr KR + us_cape Shiller CAPE) | W1+W2 구현 |
-| `app/sources/etf.py` | ETF 코어/룩스루 | 스텁(R2 연기) |
-| `app/collect.py` | 일배치 통합자 | W2 구현 |
-| `app/metrics/*` | 비중·밸류·트렌드 계산 | W3 스텁 |
-| `app/briefing.py` | LLM 브리핑 | W3 스텁 |
-| `app/main.py` | FastAPI 진입점 | 스캐폴드 |
+| `app/models.py` | frozen DTO 전량 (§15.2 — OHLCV·Funda·SecurityCard·BriefingDoc 등) | 구현 |
+| `app/db.py` | connect/init_schema/latest_*/upsert_*/load_latest_briefing/is_backfill_complete | 구현 |
+| `app/tickers.py` · `calendar.py` | 티커 정규화 · 거래일(XKRX/XNYS) | 구현 |
+| `app/sources/{kr,us,fx,regime}.py` | KR/US/FX/레짐 어댑터 (+ `__init__` 공통 가드) | 구현 |
+| `app/sources/etf.py` | ETF 룩스루 | 스텁(R2 연기) |
+| `app/collect.py` | 일배치 통합자 (daily/backfill) | 구현 |
+| `app/metrics/{priced,portfolio,security,gate}.py` | 통화정규화·5/25·밸류·게이트 | 구현 (W3) |
+| `app/briefing.py` · `llm.py` · `schemas.py` · `prompts/` | AI 브리핑 + why_note 변동 귀인 | 구현 (W4 + Level 1) |
+| `app/main.py` · `holdings_form.py` · `templates/` · `static/` | 라우트 4종·검증·터미널 UI·모바일 | 구현 (W5 + Level 1) |
+| `app/notify.py` | ntfy/Telegram 푸시 (FAIL + 브리핑 도착) | 구현 (W6 + Level 1) |
+| `scripts/` · `ops/` | 진입점·launchd 스케줄·백필 핸드오프(G9) | 구현 (W6) |
 
 ## 마일스톤 매핑
 
-- **W1 (BAL-1 / M1a)**: db·tickers·calendar·kr 어댑터·models 일부 — 삼성전자(005930) 단일종목 인입 증명.
-- **W2 (BAL-2)**: us·fx·regime(us_cape)·collect 배치·db W2 헬퍼 — 30종목 데이터 레이어 완성. BAL-16(ETF 룩스루)=R2 연기.
-- **W3+**: metrics·LLM 브리핑·프론트·손익(G8) — 미착수.
+- **W1~W6 (BAL-1~6)**: 데이터 레이어 → 지표 → AI 브리핑 → 프론트 → 무인운영 — 전량 closed.
+- **Level 1 (2026-06)**: 브리핑 도착 푸시 · 모바일 반응형 · 변동 귀인(why_note) · 데이터 출처 UI.
+- **이후**: dogfooding 검증 → `docs/PRODUCT-VISION-NEXT-LEVEL.md`(Level 2: 대화형 Q&A·주간 리뷰·장중 트리거).
 
 ## seam 계약 정본
 
-W1 = `docs/BAL-1-m1a-orchestration.md §2` + `docs/BAL-1-m1a-decisions.md`.
-W2 = `docs/BAL-2-w2-orchestration.md §2` + `docs/BAL-2-w2-decisions.md`.
-⚠️ `TECH-DESIGN.md`는 레포에 없음 — 04/05/01이 정본(W1 dev-guide의 §15 인용은 부재 파일).
+W별 = `docs/BAL-{N}-*-orchestration.md` + `*-decisions.md` / dev-guide.
+⚠️ `TECH-DESIGN.md`는 레포에 없음 — `docs/01·03·04·05·06`이 정본.

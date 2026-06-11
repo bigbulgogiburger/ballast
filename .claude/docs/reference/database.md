@@ -26,6 +26,13 @@ connect(db_path="data/ballast.db") -> sqlite3.Connection
 | `upsert_market_regime(conn, RegimeRow)` | as_of→trade_date, us_cape→shiller_cape 매핑 |
 | `upsert_collect_run(conn, td, market, status, n_ok, n_fail, missing_tickers)` | PK(td,market), missing=caller가 json.dumps |
 | `auto_holdings(conn, user_id=1)` | tracking='auto' 행(sqlite3.Row, 키 접근 `row["market"]`) |
+| `last_two_closes(conn, ct)` | 최신 2거래일 close_adj — 전일대비(change_pct) 산출용 |
+| `latest_collect_run(conn, market)` / `markets_in_use(conn)` | 게이트·배지 판정용 |
+| `headlines_map(conn)` | ct별 헤드라인 dict — LLM 입력 조립용 |
+| `holdings(conn)` / `save_holdings(conn, rows)` | 보유자산 조회/저장 |
+| `get_settings(conn)` / `save_settings(conn, values)` | §15.5 설정 7키 (TEXT 저장) |
+| `insert_briefing(conn, user_id, content_json, model)` / `load_latest_briefing(conn)` | 브리핑 이력 적재(date 단독 PK 아님)·최신 1건 BriefingDoc |
+| `is_backfill_complete(conn)` | G9 핸드오프 — 데이터 완성도로 daily 전환 판정 (`operations.md`) |
 
 ## NEVER
 
@@ -39,6 +46,6 @@ connect(db_path="data/ballast.db") -> sqlite3.Connection
 - **현재 평가액** = `close_raw`(미조정).
 - **52주/SMA200/percentile** = `close_adj`(조정) — 매 수집 시 윈도우 통째 fresh 재계산(캐시 누적 금지, stale 방지).
 
-## 미구현 (W2+ 범위)
+## 미구현
 
-`upsert_holdings/settings/briefing`, 신선도 배지 집계 쿼리(05 §3.3), 게이트 판정 쿼리(05 §3.5), users 테이블(PoC 미생성).
+users 테이블(PoC — `user_id=1` 고정, 컬럼만 보존). 그 외 W1~W6 헬퍼는 전량 구현.

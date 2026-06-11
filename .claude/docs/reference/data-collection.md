@@ -52,6 +52,12 @@ else           → OK
 
 차단은 `FAIL`만: FX FAIL→US 전체 보류, US FAIL→US 종목만 제외+KR 정상, 전 시장 미갱신→생성 거부. `BACKFILL`/`OK_HOLIDAY`는 정상 진행+라벨.
 
-## 미구현 (W2+ / 운영)
+## 운영 연동 (W6 — `operations.md` 상세)
 
-`scripts/run_collect.py --bootstrap` CLI 래퍼(함수 동작까지만), FMP 250req/day 일일 한도 누적 추적(현재 rps blocking까지).
+- `scripts/run_collect.py` — `--backfill` 명시 또는 `is_backfill_complete` G9 핸드오프로 모드 자동 결정.
+- 수집 FAIL → `notify.send_fail_alert` (backfill 모드는 스팸 방지 억제).
+- launchd 08:00 스케줄 (`ops/com.ballast.collect.plist`).
+
+## 미구현
+
+FMP 250req/day 일일 한도 누적 추적(현재 rps blocking까지 — 백필 분할로 우회).

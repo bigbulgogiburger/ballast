@@ -43,7 +43,7 @@ def validate_response(rows, latest, expected): ...  # rows==0 → EmptyResponseE
 
 `pandas_datareader`(Stooq)·`openpyxl`/`xlrd`(Yale xls)는 requirements엔 있으나 venv 미설치 가능 → **메서드 내부 lazy import**로 모듈 로드 비차단. 테스트는 `_fetch_*` 경계 모킹. 실 네트워크 스모크 시 설치 필요.
 
-## 이월 (W3 하드닝)
+## 이월 처리 현황
 
-- **headline 텍스트 → LLM 프롬프트/Jinja2 주입 격리**(S-4) — W3 프롬프트 조립에서 'untrusted news' 구분자 + autoescape.
-- EDGAR report_date 실제 CIK 매핑(현재 None degrade).
+- ~~headline 텍스트 → LLM 프롬프트 주입 격리~~ — **구현됨**: `briefing.build_security_prompt`가 개행 제거 + title 100자/source 40자 절단, Jinja2 autoescape (`ai-briefing.md`).
+- EDGAR report_date 실제 CIK 매핑 — 여전히 None degrade (배지 '워밍업' 표시).
