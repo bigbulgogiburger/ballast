@@ -555,6 +555,62 @@ select option { background: var(--c-card); color: var(--c-ink); }
 .settings-form .btn,
 .settings-form .btn--primary { grid-column: 1 / -1; justify-self: start; }
 
+/* ─────────────── 모바일 (≤640px — 아침 30초 폰 스캔) ─────────────── */
+@media (max-width: 640px) {
+  .site-main,
+  main { padding: var(--s-sm) var(--s-xs) var(--s-xl); }
+
+  /* 톱바 — 줄바꿈 허용 + 탭 타깃 확대 */
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: 2px;
+    padding: 8px var(--s-xs);
+  }
+  .site-nav { margin-left: 0; }
+  .site-nav a { padding: 8px 10px; }
+  .ticker-status { margin-left: auto; }
+
+  .disclaimer-line { padding: 0 var(--s-xs); }
+
+  /* 종목 카드 — summary 줄바꿈 허용, 탭 타깃 확대, 이름 말줄임 */
+  .sec-card > summary,
+  .sec-card-head {
+    flex-wrap: wrap;
+    padding: 12px var(--s-sm);
+    row-gap: 4px;
+  }
+  .sec-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 55vw;
+  }
+  .sec-body { padding: var(--s-xs) var(--s-sm) var(--s-sm); }
+
+  /* 고밀도 표 — 가로 스크롤 (열 수 유지, 줄바꿈 금지) */
+  .density {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .density th,
+  .density td { padding: 0 8px; }
+
+  /* 누적 바 — 좁은 세그먼트 라벨 축소 */
+  .stack-bar { height: 26px; }
+  .seg-label { font-size: 0.66rem; }
+
+  /* holdings 편집 테이블 — 가로 스크롤 */
+  .holdings-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* ─────────────── 진입 모션 (섹션 stagger) ─────────────── */
 @media (prefers-reduced-motion: no-preference) {
   .site-main > section,
